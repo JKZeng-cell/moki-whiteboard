@@ -1,0 +1,36 @@
+{
+  "repository": "google/fonts",
+  "revision": "c2ef852f23814b921f6fa74795fc7fe9556eb343",
+  "entries": [
+    {
+      "name": "Inter-Variable.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/c2ef852f23814b921f6fa74795fc7fe9556eb343/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
+      "bytes": 876576,
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    },
+    {
+      "name": "Inter-Italic-Variable.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/c2ef852f23814b921f6fa74795fc7fe9556eb343/ofl/inter/Inter-Italic%5Bopsz,wght%5D.ttf",
+      "bytes": 906596,
+      "sha256": "acd98e64795781b2058f07b18475e0ecee2a0fe2b42a49e2f9e37d0d6bf66ce6"
+    },
+    {
+      "name": "Inter-OFL.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/c2ef852f23814b921f6fa74795fc7fe9556eb343/ofl/inter/OFL.txt",
+      "bytes": 4377,
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57"
+    },
+    {
+      "name": "NotoSansSC-Variable.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/c2ef852f23814b921f6fa74795fc7fe9556eb343/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+      "bytes": 17772300,
+      "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da"
+    },
+    {
+      "name": "NotoSansSC-OFL.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/c2ef852f23814b921f6fa74795fc7fe9556eb343/ofl/notosanssc/OFL.txt",
+      "bytes": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    }
+  ]
+}

@@ -1,0 +1,1643 @@
+/* Component backgrounds that are not represented by color utility classes. */
+html[data-color-scheme="dark"],
+html[data-color-scheme="dark"] body {
+  color-scheme: dark;
+}
+
+html[data-color-scheme="dark"] select {
+  color-scheme: dark !important;
+}
+
+html[data-color-scheme="dark"] select :is(option, optgroup) {
+  color: #eef0f8 !important;
+  background-color: #1d2435 !important;
+}
+
+html[data-color-scheme="dark"] select option:checked {
+  color: #ffffff !important;
+  background: linear-gradient(#625bc5, #625bc5) !important;
+}
+
+html[data-color-scheme="dark"] #root [class~="from-white"] {
+  --tw-gradient-from: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] #root [class~="via-white"] {
+  --tw-gradient-via: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] #root [class~="to-white"] {
+  --tw-gradient-to: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-page-surface.moki-assistant-page-surface {
+  background-color: #171c2b !important;
+  background-image:
+    radial-gradient(circle at 18% 20%, rgba(130, 120, 226, 0.16), transparent 34%),
+    radial-gradient(circle at 86% 25%, rgba(67, 155, 165, 0.12), transparent 32%),
+    radial-gradient(circle at 58% 82%, rgba(180, 94, 151, 0.1), transparent 36%);
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-model-trigger {
+  border-color: rgba(122, 132, 168, 0.28) !important;
+  background: rgba(31, 37, 54, 0.9) !important;
+  color: #e1e5f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 4px 12px rgba(5, 8, 18, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-model-trigger:hover {
+  border-color: rgba(151, 160, 194, 0.44) !important;
+  background: rgba(42, 48, 69, 0.96) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-model-trigger[aria-expanded="true"] {
+  border-color: rgba(170, 164, 255, 0.5) !important;
+  background: rgba(128, 116, 216, 0.2) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 176, 255, 0.12),
+    0 5px 16px rgba(5, 8, 18, 0.2) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-model-trigger:focus-visible {
+  border-color: rgba(184, 176, 255, 0.62) !important;
+  box-shadow: 0 0 0 3px rgba(128, 116, 216, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-divider {
+  background: rgba(122, 132, 168, 0.2) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-button {
+  border: 1px solid rgba(122, 132, 168, 0.28) !important;
+  background: rgba(31, 37, 54, 0.9) !important;
+  color: #cfd4e3 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 4px 12px rgba(5, 8, 18, 0.12) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-button:hover {
+  border-color: rgba(151, 160, 194, 0.44) !important;
+  background: rgba(42, 48, 69, 0.96) !important;
+  color: #f1f3fa !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-primary {
+  border-color: rgba(170, 164, 255, 0.38) !important;
+  background: rgba(95, 82, 184, 0.42) !important;
+  color: #f5f3ff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-primary:hover {
+  border-color: rgba(184, 176, 255, 0.58) !important;
+  background: rgba(105, 92, 198, 0.58) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-page-surface .moki-assistant-toolbar-panel[aria-expanded="true"] {
+  border-color: rgba(170, 164, 255, 0.48) !important;
+  background: rgba(128, 116, 216, 0.24) !important;
+  color: #dcd8ff !important;
+  box-shadow: inset 0 0 0 1px rgba(184, 176, 255, 0.1) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-welcome-mark .moki-assistant-interaction {
+  border: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition:
+    transform 180ms ease;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-welcome-mark .moki-assistant-interaction:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-welcome-mark .moki-assistant-interaction:active {
+  transform: scale(0.96);
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-welcome-mark .moki-assistant-interaction:focus-visible {
+  border-color: rgba(218, 214, 255, 0.76);
+  box-shadow:
+    0 0 0 4px rgba(128, 116, 216, 0.2),
+    0 12px 30px rgba(5, 8, 18, 0.32) !important;
+}
+
+/* The assistant can live in its own transparent Electron BrowserWindow. Paint
+   the full rounded panel with an opaque dark surface, while keeping only the
+   outer capture gutter transparent. A muted blue-grey stroke preserves the
+   contour without producing a white halo in dark mode. */
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb) {
+  color: #edf0f7;
+  border-color: rgba(93, 104, 139, 0.46) !important;
+  background: linear-gradient(145deg, #1e2435 0%, #181d2b 100%) !important;
+  backdrop-filter: none;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-detached-surface {
+  box-shadow:
+    0 0 0 1px rgba(75, 85, 116, 0.22),
+    0 3px 9px rgba(3, 6, 15, 0.34),
+    0 10px 24px -10px rgba(3, 6, 15, 0.52) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb) > header {
+  color: #f2f4fa;
+  border-color: rgba(93, 104, 139, 0.32) !important;
+  background: #1e2435;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb)
+  .moki-assistant-detached-controls button {
+  color: #c4cada !important;
+  border-color: rgba(93, 104, 139, 0.42) !important;
+  background: #242a3c !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb)
+  .moki-assistant-detached-controls button:hover {
+  color: #e1ddff !important;
+  border-color: rgba(138, 132, 207, 0.5) !important;
+  background: #2b3045 !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-welcome-card {
+  color: #dce1ee;
+  background: linear-gradient(145deg, #292844, #23283b) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-quick-label {
+  color: #9ea7bd !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-prompt {
+  color: #edf0f7 !important;
+  border-color: rgba(93, 104, 139, 0.4) !important;
+  background: #23293a !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-prompt:hover {
+  color: #ffffff !important;
+  border-color: rgba(154, 147, 227, 0.54) !important;
+  background: #292f43 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 6px 18px rgba(4, 7, 17, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-prompt-icon {
+  color: #b9b3ff !important;
+  background: #302d55 !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-prompt-label {
+  color: inherit !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-floating-prompt-arrow {
+  color: #929bb1 !important;
+}
+
+html[data-color-scheme="dark"]
+  :is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb)) {
+  --moki-assistant-scrollbar-thumb: rgba(151, 160, 194, 0.18);
+  --moki-assistant-scrollbar-thumb-hover: rgba(151, 160, 194, 0.34);
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb)) * {
+  scrollbar-color: var(--moki-assistant-scrollbar-thumb) transparent !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-assistant-composer-dock {
+  background: linear-gradient(
+    to bottom,
+    rgba(23, 28, 43, 0),
+    rgba(23, 28, 43, 0.84) 42%,
+    rgba(23, 28, 43, 0.97) 72%,
+    #171c2b 100%
+  );
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb) .moki-assistant-composer-footer {
+  border-color: rgba(122, 132, 168, 0.24) !important;
+  background: #181d2c !important;
+  box-shadow: 0 -12px 30px rgba(5, 8, 18, 0.2);
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-form {
+  border-color: rgba(122, 132, 168, 0.34) !important;
+  background: rgba(34, 40, 58, 0.96) !important;
+  color: #e6e9f2 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 22px 60px rgba(5, 8, 18, 0.32) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-form:focus-within {
+  border-color: rgba(170, 164, 255, 0.58) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 0 3px rgba(128, 116, 216, 0.1),
+    0 22px 60px rgba(5, 8, 18, 0.34) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-editor {
+  color: #edf0f7 !important;
+  caret-color: #b8b0ff;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-tool {
+  border: 1px solid rgba(122, 132, 168, 0.3) !important;
+  background: rgba(25, 30, 46, 0.72) !important;
+  color: #b8bfd1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 3px 10px rgba(5, 8, 18, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-tool:hover:not(:disabled) {
+  border-color: rgba(170, 164, 255, 0.48) !important;
+  background: rgba(103, 91, 188, 0.24) !important;
+  color: #d9d5ff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-tool:is([aria-expanded="true"], [data-composer-tool-state="accent"]) {
+  border-color: rgba(184, 176, 255, 0.56) !important;
+  background: rgba(112, 99, 204, 0.3) !important;
+  color: #e2deff !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(206, 201, 255, 0.08),
+    0 4px 12px rgba(10, 9, 28, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-tool[data-composer-tool-state="success"] {
+  border-color: rgba(94, 198, 158, 0.42) !important;
+  background: rgba(44, 128, 98, 0.24) !important;
+  color: #87dfbd !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-tool:disabled {
+  border-color: rgba(91, 100, 128, 0.22) !important;
+  background: rgba(25, 30, 46, 0.46) !important;
+  color: #737c92 !important;
+  opacity: 0.72 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) :is(.moki-assistant-composer-stop, .moki-assistant-composer-submit) {
+  border: 1px solid rgba(170, 164, 255, 0.44) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 5px 14px rgba(5, 8, 18, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-stop {
+  background: rgba(112, 99, 204, 0.28) !important;
+  color: #dedaff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-submit:not(:disabled) {
+  background: linear-gradient(145deg, #7b72dc, #5750ad) !important;
+  color: #ffffff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-submit:disabled {
+  border-color: rgba(103, 112, 143, 0.28) !important;
+  background: rgba(45, 52, 75, 0.9) !important;
+  color: #858da3 !important;
+  opacity: 1 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-usage {
+  color: #aab2c7 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb)) .moki-assistant-composer-warning {
+  color: #929bb1 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb) .moki-assistant-composer-full-link {
+  color: #bbb5f2 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .moki-assistant-floating:not(.moki-assistant-orb) .moki-assistant-composer-full-link:hover {
+  color: #e1ddff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message {
+  border-color: rgba(132, 143, 177, 0.3) !important;
+  background: linear-gradient(145deg, rgba(39, 46, 67, 0.98), rgba(30, 36, 53, 0.98)) !important;
+  color: #e1e5f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 7px 20px rgba(5, 8, 18, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message[data-assistant-message-role="user"] {
+  border: 1px solid rgba(190, 184, 255, 0.34);
+  background: linear-gradient(145deg, rgba(105, 94, 194, 0.96), rgba(73, 67, 139, 0.98)) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 22px rgba(29, 24, 82, 0.24) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message[data-assistant-message-kind="action-success"] {
+  border-color: rgba(85, 199, 156, 0.34) !important;
+  background: linear-gradient(145deg, rgba(26, 63, 54, 0.96), rgba(23, 45, 43, 0.98)) !important;
+  color: #ccefe1 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message[data-assistant-message-kind="action-error"] {
+  border-color: rgba(235, 123, 154, 0.34) !important;
+  background: linear-gradient(145deg, rgba(74, 38, 52, 0.96), rgba(52, 31, 43, 0.98)) !important;
+  color: #ffd4df !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message .moki-assistant-message-time {
+  color: #9ea8bf !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message[data-assistant-message-role="user"] .moki-assistant-message-time {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message .moki-assistant-message-copy {
+  color: #aeb7cc !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message .moki-assistant-message-copy:hover {
+  background: rgba(170, 164, 255, 0.14) !important;
+  color: #d9d5ff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.moki-assistant-page-surface, .moki-assistant-floating:not(.moki-assistant-orb))
+  .moki-assistant-message[data-assistant-message-role="user"] .moki-assistant-message-copy {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] #root .native-whiteboard.native-whiteboard {
+  --whiteboard-control-border: rgba(122, 132, 168, 0.22);
+  --whiteboard-control-border-hover: rgba(151, 160, 194, 0.34);
+  --whiteboard-control-border-active: rgba(170, 164, 255, 0.48);
+  background-color: #151a28 !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  :is([data-whiteboard-control-surface], [data-whiteboard-control-button]) {
+  border-color: var(--whiteboard-control-border, rgba(122, 132, 168, 0.22)) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  [data-whiteboard-control-surface] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 8px 24px rgba(5, 8, 18, 0.24) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  [data-whiteboard-control-button]:hover {
+  border-color: var(--whiteboard-control-border-hover, rgba(151, 160, 194, 0.34)) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  [data-whiteboard-control-button]:is(:focus-visible, [aria-expanded="true"], [aria-pressed="true"]) {
+  border-color: var(--whiteboard-control-border-active, rgba(170, 164, 255, 0.48)) !important;
+}
+
+html[data-color-scheme="dark"] .moki-menu-surface {
+  border-color: rgba(75, 84, 111, 0.94) !important;
+  background: rgba(28, 33, 49, 0.985) !important;
+  color: #e8eaf4;
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.44),
+    0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+html[data-color-scheme="dark"] .moki-menu-surface
+  :is([role="menuitem"], [role="menuitemradio"]):is(:hover, :focus-visible),
+html[data-color-scheme="dark"] .moki-menu-surface
+  [role="menuitemradio"][aria-checked="true"] {
+  background: #2b2948;
+  color: #aaa4ff;
+}
+
+html[data-color-scheme="dark"] .moki-menu-divider {
+  background: #3a4157;
+}
+
+html[data-color-scheme="dark"] .moki-menu-column-divider {
+  border-color: rgba(122, 132, 168, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] [data-whiteboard-color-menu] {
+  color-scheme: dark;
+}
+
+html[data-color-scheme="dark"] [data-whiteboard-color-menu]
+  .native-whiteboard-color-swatch {
+  --tw-ring-offset-color: #1c2131 !important;
+}
+
+html[data-color-scheme="dark"] [data-whiteboard-color-menu]
+  .native-whiteboard-color-section .native-whiteboard-color-swatch {
+  --tw-ring-offset-color: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] [data-whiteboard-color-menu]
+  .native-whiteboard-opacity-slider {
+  color-scheme: dark;
+  accent-color: #8f87ef;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-sizes {
+  background: rgba(15, 20, 33, 0.62) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-toolbar-group {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-control {
+  color: #aeb5c9 !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-control[aria-pressed="true"] {
+  background: #45406f !important;
+  color: #ddd9ff !important;
+  box-shadow: inset 0 0 0 1px rgba(170, 164, 255, 0.5) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-control[aria-pressed="false"]:hover,
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-color-trigger:hover {
+  background: rgba(122, 132, 168, 0.16) !important;
+  color: #eef0f8 !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-color-trigger {
+  color: #c8cede !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-text-color-trigger[aria-expanded="true"] {
+  background: #45406f !important;
+  color: #f0edff !important;
+  box-shadow: inset 0 0 0 1px rgba(170, 164, 255, 0.5) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-current-color {
+  border-color: #242a3c !important;
+  box-shadow: 0 0 0 1px rgba(213, 218, 235, 0.62) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-edit-control {
+  color: #c5cbdb !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-edit-control:is([aria-pressed="true"], [aria-checked="true"], [aria-expanded="true"]) {
+  background: #45406f !important;
+  color: #e2deff !important;
+  box-shadow: inset 0 0 0 1px rgba(170, 164, 255, 0.52) !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-edit-control:hover {
+  background: rgba(122, 132, 168, 0.17) !important;
+  color: #f1f3fa !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-edit-control:is([aria-pressed="true"], [aria-checked="true"], [aria-expanded="true"]):hover {
+  background: #514a80 !important;
+  color: #f0edff !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-paint-color-trigger {
+  color: #cbd1e1 !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-menu-section {
+  border: 1px solid rgba(122, 132, 168, 0.2) !important;
+  background: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-menu-card {
+  border-color: rgba(122, 132, 168, 0.28) !important;
+  background: #242a3c !important;
+  color: #dce0ec !important;
+}
+
+html[data-color-scheme="dark"] #root .whiteboard-canvas
+  .native-whiteboard-menu-card:hover {
+  border-color: rgba(170, 164, 255, 0.52) !important;
+  background: #302d50 !important;
+  color: #e2deff !important;
+}
+
+html[data-color-scheme="dark"] #root .memo-position-scrollbar {
+  background: rgba(151, 160, 194, 0.1);
+  opacity: 0.68;
+}
+
+html[data-color-scheme="dark"] #root .memo-position-scrollbar.is-scrollable {
+  opacity: 1;
+}
+
+html[data-color-scheme="dark"] #root .memo-position-scrollbar-thumb {
+  inset-block: 1px;
+  background: rgba(170, 164, 255, 0.46);
+  box-shadow:
+    inset 0 0 0 1px rgba(205, 201, 255, 0.2),
+    0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+html[data-color-scheme="dark"] #root
+  .memo-position-scrollbar.is-scrollable:hover .memo-position-scrollbar-thumb {
+  background: rgba(170, 164, 255, 0.66);
+}
+
+html[data-color-scheme="dark"] #root
+  .memo-position-scrollbar.is-scrollable.is-dragging
+  .memo-position-scrollbar-thumb {
+  background: rgba(170, 164, 255, 0.82);
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 223, 255, 0.34),
+    0 1px 6px rgba(0, 0, 0, 0.36);
+}
+
+html[data-color-scheme="dark"] #root .memo-position-scrollbar:focus-visible {
+  outline-color: rgba(170, 164, 255, 0.78);
+  box-shadow: 0 0 0 3px rgba(143, 135, 239, 0.13);
+}
+
+html[data-color-scheme="dark"] #root
+  .desktop-shell-surface > .desktop-app-sidebar {
+  border-right-color: rgba(122, 132, 168, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root .card-scroll-viewport {
+  scrollbar-color: rgba(151, 160, 194, 0.16) transparent;
+}
+
+html[data-color-scheme="dark"] #root
+  .card-scroll-viewport:is(:hover, :focus-within) {
+  scrollbar-color: rgba(151, 160, 194, 0.3) transparent;
+}
+
+html[data-color-scheme="dark"] #root
+  .card-scroll-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-color-scheme="dark"] #root
+  .card-scroll-viewport::-webkit-scrollbar-thumb {
+  background: rgba(151, 160, 194, 0.16);
+  background-clip: padding-box;
+}
+
+html[data-color-scheme="dark"] #root
+  .card-scroll-viewport:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+  background: rgba(151, 160, 194, 0.3);
+  background-clip: padding-box;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-queue-scroll.task-queue-scroll > :not([hidden]) {
+  border-color: rgba(122, 132, 168, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root .task-filter-bar.task-filter-bar {
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: rgba(32, 38, 56, 0.88) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.022),
+    0 8px 24px rgba(5, 8, 18, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.task-filter-search.task-filter-search, .task-filter-select.task-filter-select) {
+  border: 1px solid rgba(122, 132, 168, 0.24) !important;
+  background: rgba(31, 37, 54, 0.78) !important;
+  color: #d7dbea !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.task-filter-search.task-filter-search:hover, .task-filter-select.task-filter-select:hover) {
+  border-color: rgba(151, 160, 194, 0.4) !important;
+  background: rgba(39, 46, 66, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.task-filter-search.task-filter-search:focus-within, .task-filter-select.task-filter-select:focus) {
+  border-color: rgba(170, 164, 255, 0.56) !important;
+  background: rgba(42, 48, 69, 0.94) !important;
+  box-shadow: 0 0 0 3px rgba(128, 116, 216, 0.11) !important;
+}
+
+html[data-color-scheme="dark"] #root .task-filter-icon.task-filter-icon {
+  color: #8f98ad !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-filter-select-wrap:hover .task-filter-icon {
+  color: #b4bbcf !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-filter-select-wrap:focus-within .task-filter-icon {
+  color: #b8b2ff !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-queue-item.task-queue-item[aria-pressed="false"]:hover {
+  background: rgba(151, 160, 194, 0.08) !important;
+  box-shadow: inset 3px 0 0 rgba(151, 160, 194, 0.2) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-queue-item.task-queue-item[aria-pressed="true"] {
+  background: linear-gradient(
+    90deg,
+    rgba(128, 116, 216, 0.24),
+    rgba(128, 116, 216, 0.12) 72%,
+    rgba(128, 116, 216, 0.08)
+  ) !important;
+  box-shadow:
+    inset 3px 0 0 rgba(170, 164, 255, 0.82),
+    inset 0 0 0 1px rgba(170, 164, 255, 0.3) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-queue-item.task-queue-item[aria-pressed="true"]:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(128, 116, 216, 0.3),
+    rgba(128, 116, 216, 0.16) 72%,
+    rgba(128, 116, 216, 0.1)
+  ) !important;
+}
+
+html[data-color-scheme="dark"] #root .task-summary-dialog.task-summary-dialog {
+  border-color: rgba(122, 132, 168, 0.26) !important;
+  background: #202638 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 28px 90px rgba(3, 5, 14, 0.48) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-summary-dialog-header.task-summary-dialog-header {
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: #202638 !important;
+}
+
+html[data-color-scheme="dark"] #root .task-summary-item.task-summary-item {
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: rgba(40, 47, 68, 0.74) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .task-summary-item.task-summary-item:hover {
+  border-color: rgba(170, 164, 255, 0.42) !important;
+  background: rgba(50, 57, 82, 0.92) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .library-toolbar-field.library-toolbar-field {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .library-toolbar-field.library-toolbar-field:hover {
+  border-color: rgba(151, 160, 194, 0.34) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .library-toolbar-field.library-toolbar-field:is(:focus, :focus-within) {
+  border-color: rgba(170, 164, 255, 0.58) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .library-view-mode-button.library-view-mode-button[aria-pressed="true"] {
+  color: #e3e0ff !important;
+  background: rgba(128, 116, 216, 0.3) !important;
+  box-shadow: inset 0 0 0 1px rgba(184, 176, 255, 0.34);
+}
+
+html[data-color-scheme="dark"] #root
+  .library-view-mode-button.library-view-mode-button[aria-pressed="false"]:hover {
+  color: #d4d8e8 !important;
+  background: rgba(151, 160, 194, 0.1) !important;
+}
+
+html[data-color-scheme="dark"] #root .dashboard-filter-bar.dashboard-filter-bar {
+  border: 1px solid rgba(122, 132, 168, 0.18);
+  background: rgba(32, 38, 56, 0.94) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-filter-button.dashboard-filter-button[aria-pressed="true"] {
+  color: #e3e0ff !important;
+  background: rgba(128, 116, 216, 0.3) !important;
+  box-shadow: inset 0 0 0 1px rgba(184, 176, 255, 0.32);
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-filter-button.dashboard-filter-button[aria-pressed="false"] {
+  color: #aeb6cc !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-filter-button.dashboard-filter-button[aria-pressed="false"]:hover {
+  color: #d9deef !important;
+  background: rgba(151, 160, 194, 0.1) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-project-filter.dashboard-project-filter {
+  border: 1px solid rgba(122, 132, 168, 0.22) !important;
+  color: #d4d8e8 !important;
+  background: rgba(48, 55, 80, 0.74) !important;
+  box-shadow: none !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-project-filter.dashboard-project-filter:is(:hover, :focus) {
+  border-color: rgba(170, 164, 255, 0.5) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-project-filter-chevron.dashboard-project-filter-chevron {
+  color: #9da6c1 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-filter-settings.dashboard-filter-settings {
+  color: #a4adc5 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-filter-settings.dashboard-filter-settings:is(:hover, [aria-expanded="true"]) {
+  color: #e3e0ff !important;
+  background: rgba(128, 116, 216, 0.2) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  [data-whiteboard-page-toolbar] > span[aria-hidden="true"] {
+  background: rgba(122, 132, 168, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-quick-entry.dashboard-quick-entry {
+  border: 1px solid rgba(122, 132, 168, 0.18);
+  background: rgba(40, 47, 68, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-quick-entry.dashboard-quick-entry[data-quick-entry-available="true"]:hover {
+  border-color: rgba(170, 164, 255, 0.36);
+  background: rgba(48, 55, 80, 0.88) !important;
+  box-shadow: 0 5px 14px rgba(5, 8, 18, 0.16);
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-quick-entry-icon.dashboard-quick-entry-icon {
+  background: rgba(24, 29, 44, 0.72) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 132, 168, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-right-panel.dashboard-right-panel {
+  border: 1px solid rgba(122, 132, 168, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 8px 24px rgba(5, 8, 18, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-calendar-day.dashboard-calendar-day[data-selected="true"] {
+  color: #f5f3ff !important;
+  background: linear-gradient(
+    145deg,
+    rgba(122, 110, 216, 0.5),
+    rgba(83, 72, 159, 0.44)
+  ) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(205, 199, 255, 0.58),
+    0 7px 18px rgba(5, 8, 18, 0.3) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-calendar-day.dashboard-calendar-day[data-selected="true"]:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(136, 123, 232, 0.58),
+    rgba(94, 82, 177, 0.5)
+  ) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-calendar-day.dashboard-calendar-day[aria-current="date"][data-selected="false"] {
+  color: #c9c4ff !important;
+  background: rgba(111, 101, 190, 0.2) !important;
+  box-shadow: inset 0 0 0 1px rgba(170, 164, 255, 0.3) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-priority-panel.dashboard-priority-panel {
+  background: rgba(36, 42, 60, 0.96) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-toolbox-action.dashboard-toolbox-action {
+  border: 1px solid rgba(122, 132, 168, 0.16);
+  background: rgba(40, 47, 68, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-toolbox-action.dashboard-toolbox-action:not(:disabled):hover {
+  border-color: rgba(170, 164, 255, 0.34);
+  background: rgba(48, 55, 80, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .dashboard-toolbox-action-icon.dashboard-toolbox-action-icon {
+  background: rgba(24, 29, 44, 0.72) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 132, 168, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-tool-tabs {
+  border: 1px solid rgba(122, 132, 168, 0.2);
+  background: rgba(29, 35, 52, 0.9) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+}
+
+html[data-color-scheme="dark"] #root .moki-tool-tab[data-tool-tab-active="false"] {
+  color: #aeb6ca !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-tool-tab[data-tool-tab-active="false"]:hover {
+  border-color: rgba(151, 160, 194, 0.24);
+  background: rgba(48, 55, 80, 0.76) !important;
+  color: #eef0f8 !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-tool-tab[data-tool-tab-active="true"] {
+  border-color: rgba(184, 176, 255, 0.58) !important;
+  background: linear-gradient(145deg, #6f65c9, #524b9f) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.16),
+    0 5px 14px rgba(8, 9, 24, 0.24) !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-tool-tab:focus-visible {
+  outline: 2px solid #aaa4ff;
+  outline-offset: 2px;
+}
+
+html[data-color-scheme="dark"] #root .automation-page {
+  --automation-panel-border: rgba(122, 132, 168, 0.22);
+  --automation-card-border: rgba(122, 132, 168, 0.2);
+  --automation-card-border-hover: rgba(170, 164, 255, 0.36);
+}
+
+html[data-color-scheme="dark"] #root
+  .automation-panel.automation-panel {
+  border-color: var(--automation-panel-border) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 12px 34px rgba(5, 8, 18, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .automation-summary-card.automation-summary-card {
+  border-color: rgba(122, 132, 168, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 8px 22px rgba(5, 8, 18, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(.automation-card.automation-card, .automation-record-card.automation-record-card) {
+  border-color: var(--automation-card-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+html[data-color-scheme="dark"] #root
+  .automation-record-card.automation-record-card:is(:hover, :focus-visible) {
+  border-color: var(--automation-card-border-hover) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .automation-assistant-card.automation-assistant-card {
+  border: 1px solid rgba(122, 132, 168, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+html[data-color-scheme="dark"] #root
+  .report-history-item.report-history-item {
+  border: 1px solid rgba(122, 132, 168, 0.16);
+  background: rgba(40, 47, 68, 0.64) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .report-history-item.report-history-item[aria-pressed="false"]:hover {
+  border-color: rgba(151, 160, 194, 0.32);
+  background: rgba(48, 55, 80, 0.82) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .report-history-item.report-history-item[aria-pressed="true"] {
+  border-color: rgba(170, 164, 255, 0.42);
+  background: rgba(128, 116, 216, 0.22) !important;
+  box-shadow: inset 0 0 0 1px rgba(184, 176, 255, 0.08);
+}
+
+html[data-color-scheme="dark"] #root .heatmap-daily-panel.heatmap-daily-panel {
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: rgba(36, 42, 60, 0.92) !important;
+  box-shadow: 0 10px 30px rgba(5, 8, 18, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .activity-heatmap-nav-button.activity-heatmap-nav-button {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  color: #aeb6cc !important;
+  background: rgba(40, 47, 68, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .activity-heatmap-nav-button.activity-heatmap-nav-button:hover {
+  border-color: rgba(170, 164, 255, 0.44) !important;
+  color: #dcd8ff !important;
+  background: rgba(128, 116, 216, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .activity-heatmap-placeholder.activity-heatmap-placeholder {
+  border: 1px dashed rgba(122, 132, 168, 0.1);
+  background: rgba(31, 37, 54, 0.32) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(
+    .activity-heatmap-cell.activity-heatmap-cell,
+    .activity-heatmap-tone.activity-heatmap-tone
+  )[data-heat-level="idle"] {
+  border-color: rgba(122, 132, 168, 0.18) !important;
+  color: #9da6c1 !important;
+  background: rgba(31, 37, 54, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(
+    .activity-heatmap-cell.activity-heatmap-cell,
+    .activity-heatmap-tone.activity-heatmap-tone
+  )[data-heat-level="low"] {
+  border-color: rgba(151, 140, 232, 0.3) !important;
+  color: #cbc6ff !important;
+  background: rgba(79, 70, 143, 0.34) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(
+    .activity-heatmap-cell.activity-heatmap-cell,
+    .activity-heatmap-tone.activity-heatmap-tone
+  )[data-heat-level="medium"] {
+  border-color: rgba(184, 176, 255, 0.4) !important;
+  color: #f2f0ff !important;
+  background: rgba(118, 104, 204, 0.56) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  :is(
+    .activity-heatmap-cell.activity-heatmap-cell,
+    .activity-heatmap-tone.activity-heatmap-tone
+  )[data-heat-level="high"] {
+  border-color: rgba(205, 198, 255, 0.52) !important;
+  color: #ffffff !important;
+  background: rgba(95, 80, 185, 0.78) !important;
+  box-shadow: 0 8px 18px rgba(46, 35, 112, 0.3) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .activity-heatmap-cell.activity-heatmap-cell:hover {
+  filter: brightness(1.08);
+}
+
+html[data-color-scheme="dark"] #root
+  .activity-heatmap-level-label.activity-heatmap-level-label {
+  border: 1px solid rgba(232, 229, 255, 0.1);
+  background: rgba(10, 14, 26, 0.26) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-search.assistant-history-search {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  color: #e1e5f0 !important;
+  background: rgba(31, 37, 54, 0.72) !important;
+  box-shadow: none !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-search.assistant-history-search:hover {
+  border-color: rgba(151, 160, 194, 0.34) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-search.assistant-history-search:focus {
+  border-color: rgba(170, 164, 255, 0.56) !important;
+  background: rgba(40, 47, 68, 0.92) !important;
+  box-shadow: 0 0 0 3px rgba(128, 116, 216, 0.1) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-search.assistant-history-search::placeholder {
+  color: #7f89a4 !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-new-chat.assistant-history-new-chat {
+  border: 1px solid rgba(184, 176, 255, 0.32);
+  color: #f4f2ff !important;
+  background: rgba(128, 116, 216, 0.34) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-new-chat.assistant-history-new-chat:hover {
+  border-color: rgba(205, 198, 255, 0.48);
+  background: rgba(128, 116, 216, 0.48) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-new-group.assistant-history-new-group {
+  border: 1px solid rgba(122, 132, 168, 0.22);
+  color: #bbb5ff !important;
+  background: rgba(40, 47, 68, 0.8) !important;
+}
+
+html[data-color-scheme="dark"] #root
+  .assistant-history-new-group.assistant-history-new-group:is(:hover, [aria-expanded="true"]) {
+  border-color: rgba(170, 164, 255, 0.42);
+  color: #e3e0ff !important;
+  background: rgba(128, 116, 216, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .settings-category-nav.settings-category-nav {
+  border-color: rgba(122, 132, 168, 0.24) !important;
+  background: rgba(28, 34, 51, 0.88) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 12px 32px rgba(5, 8, 18, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog)
+  .settings-category-button.settings-category-button[aria-pressed="false"] {
+  color: #aab2c8 !important;
+  border-color: rgba(122, 132, 168, 0.08) !important;
+  background: rgba(37, 44, 64, 0.58) !important;
+  box-shadow: none !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog)
+  .settings-category-button.settings-category-button[aria-pressed="false"]:hover {
+  color: #e3e0ff !important;
+  border-color: rgba(170, 164, 255, 0.28) !important;
+  background: rgba(128, 116, 216, 0.14) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog)
+  .settings-category-button.settings-category-button[aria-pressed="true"] {
+  color: #ffffff !important;
+  border-color: rgba(205, 198, 255, 0.52) !important;
+  background:
+    linear-gradient(145deg, rgba(133, 120, 225, 0.48), rgba(82, 72, 151, 0.42)),
+    #2d2b50 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 20px rgba(45, 34, 105, 0.28) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog)
+  .settings-category-button.settings-category-button:focus-visible {
+  outline: 2px solid #aaa4ff;
+  outline-offset: 2px;
+}
+
+/* Settings dialogs are portaled to document.body, so the #root theme rules do
+   not reach them. Keep their chrome and form surfaces in the same dark palette
+   as the page underneath. */
+html[data-color-scheme="dark"] .moki-settings-dialog {
+  color-scheme: dark;
+  color: #eef0f8 !important;
+  border-color: rgba(122, 132, 168, 0.34) !important;
+  background: #171c2b !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.025),
+    0 28px 80px rgba(3, 6, 15, 0.58) !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog::backdrop {
+  background: rgba(5, 8, 18, 0.64);
+  backdrop-filter: blur(5px);
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog-header {
+  color: #f4f5fb;
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  background: rgba(29, 35, 52, 0.98) !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog-body {
+  background: #171c2b;
+  scrollbar-color: #515970 transparent;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog [class*="overflow-y-auto"] {
+  scrollbar-color: #515970 transparent;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog-close {
+  color: #c7cddd;
+  border: 1px solid rgba(122, 132, 168, 0.2);
+  background: rgba(45, 52, 74, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog-close:hover {
+  color: #ffffff;
+  border-color: rgba(170, 164, 255, 0.42);
+  background: rgba(128, 116, 216, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(input, textarea, select) {
+  color: #eef0f8 !important;
+  caret-color: #aaa4ff;
+  border-color: rgba(122, 132, 168, 0.3) !important;
+  background: rgba(24, 30, 45, 0.92) !important;
+  box-shadow: inset 0 1px 2px rgba(4, 7, 16, 0.28);
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(input, textarea, select):focus {
+  border-color: rgba(170, 164, 255, 0.58) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(128, 116, 216, 0.12);
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(input, textarea)::placeholder {
+  color: #747e97;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(
+  [class~="text-[#171b2c]"],
+  [class~="text-[#242a40]"],
+  [class~="text-[#34394b]"]
+) {
+  color: #eef0f8 !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(
+  [class~="text-[#555c70]"],
+  [class~="text-[#697083]"],
+  [class~="text-[#73798b]"],
+  [class~="text-[#858b9d]"],
+  [class~="text-[#858b9e]"],
+  [class~="text-[#8f95a8]"],
+  [class~="text-[#9297a7]"]
+) {
+  color: #9da6bc !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(
+  [class~="border-[#dedfea]"],
+  [class~="border-[#dfe2ec]"],
+  [class~="border-[#e0e2eb]"],
+  [class~="border-[#e1e3ec]"],
+  [class~="border-[#e7e9f2]"]
+) {
+  border-color: rgba(122, 132, 168, 0.28) !important;
+}
+
+html[data-color-scheme="dark"] .moki-settings-dialog :is(
+  [class~="bg-white"],
+  [class~="bg-[#f7f8fb]"],
+  [class~="bg-[#f8f9fb]"]
+):not(input, textarea, select) {
+  background-color: rgba(29, 35, 52, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-settings {
+  color: #eef0f8;
+  border-color: rgba(122, 132, 168, 0.24) !important;
+  background: rgba(29, 35, 52, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-card {
+  border-color: rgba(122, 132, 168, 0.28) !important;
+  background:
+    linear-gradient(145deg, rgba(43, 51, 75, 0.96), rgba(30, 37, 56, 0.96)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) :is(
+  .moki-connection-field-panel,
+  .moki-connection-status-panel,
+  .moki-connection-frequency,
+  .moki-connection-platform-toggle,
+  .moki-connection-platform-icon,
+  .moki-connection-auth-record
+) {
+  border-color: rgba(122, 132, 168, 0.28) !important;
+  background: rgba(23, 29, 45, 0.82) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-auth-record > p:last-child {
+  color: #aeb6cc !important;
+  background: rgba(13, 18, 31, 0.52) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-settings :is(h3, label, .moki-connection-platform-toggle > span, .moki-connection-frequency p:first-child) {
+  color: #f1f3fa !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-settings :is(
+  [class~="text-[#4d5368]"],
+  [class~="text-[#62697d]"],
+  [class~="text-[#697083]"],
+  [class~="text-[#858b9e]"],
+  [class~="text-[#8b91a3]"]
+) {
+  color: #aeb6cc !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-footer {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-save {
+  color: #ffffff !important;
+  border: 1px solid rgba(190, 183, 255, 0.26);
+  background: #6f65d2 !important;
+  box-shadow: 0 8px 18px rgba(38, 28, 98, 0.28);
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-auth-action {
+  color: #dce1ee !important;
+  border-color: rgba(122, 132, 168, 0.36) !important;
+  background: rgba(38, 46, 67, 0.94) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-auth-action:hover {
+  color: #ffffff !important;
+  border-color: rgba(170, 164, 255, 0.42) !important;
+  background: rgba(128, 116, 216, 0.18) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-sync-action {
+  color: #ffffff !important;
+  border-color: rgba(190, 183, 255, 0.24) !important;
+  background: #6f65d2 !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, .moki-settings-dialog) .moki-connection-delete-action {
+  color: #ff8eae !important;
+  border-color: rgba(224, 91, 130, 0.34) !important;
+  background: rgba(74, 34, 48, 0.62) !important;
+}
+
+html[data-color-scheme="dark"] .moki-skill-dialog-notice {
+  color: #aeb6cc !important;
+  border: 1px solid rgba(122, 132, 168, 0.16);
+  background: rgba(35, 42, 61, 0.78) !important;
+}
+
+html[data-color-scheme="dark"] .moki-skill-dialog-primary {
+  color: #ffffff !important;
+  background: #6f65d2 !important;
+}
+
+/* Generated utility groups inherit their most specific :is() selector.
+   Repeat the component class so explicit button colors win those groups. */
+html[data-color-scheme="dark"] #root .moki-skill-settings-section .moki-skill-upload-button.moki-skill-upload-button {
+  color: #ffffff !important;
+  border-color: #9288e7 !important;
+  background: #6f65d2 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-skill-settings-section .moki-skill-upload-button.moki-skill-upload-button:hover:not(:disabled) {
+  border-color: #b6aeff !important;
+  background: #7c72df !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-skill-settings-section .toolbox-card-configure.toolbox-card-configure {
+  color: #c9c4ff !important;
+  border: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-color-scheme="dark"] #root .moki-skill-settings-section .toolbox-card-configure.toolbox-card-configure:hover:not(:disabled) {
+  color: #efedff !important;
+  background: transparent !important;
+}
+
+html[data-color-scheme="dark"] .moki-skill-dialog-secondary {
+  color: #c9c4ff !important;
+  border: 1px solid rgba(170, 164, 255, 0.28);
+  background: rgba(128, 116, 216, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] .moki-skill-dialog-danger {
+  color: #ff9ab7 !important;
+  border: 1px solid rgba(224, 91, 130, 0.24);
+  background: rgba(74, 34, 48, 0.58) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section.moki-report-settings-section {
+  color: #eef0f8;
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: rgba(34, 40, 59, 0.88) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(h2, h3, label, b) {
+  color: #eef0f8 !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(
+  [class~="text-[#171b2c]"],
+  [class~="text-[#242a40]"],
+  [class~="text-[#34394b]"]
+) {
+  color: #eef0f8 !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(
+  [class~="text-[#7b8499]"],
+  [class~="text-[#858b9e]"],
+  [class~="text-[#8a91a4]"],
+  [class~="text-[#9297a7]"],
+  [class~="text-[#a0a6b8]"]
+) {
+  color: #9da6bc !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(input, textarea, select) {
+  color: #eef0f8 !important;
+  caret-color: #aaa4ff;
+  border-color: rgba(122, 132, 168, 0.3) !important;
+  background: rgba(24, 30, 45, 0.92) !important;
+  box-shadow: inset 0 1px 2px rgba(4, 7, 16, 0.28);
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(input, textarea, select):focus {
+  border-color: rgba(170, 164, 255, 0.58) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(128, 116, 216, 0.12);
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section :is(input, textarea)::placeholder {
+  color: #747e97;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.65;
+}
+
+html[data-color-scheme="dark"] .moki-report-weight {
+  border: 1px solid rgba(122, 132, 168, 0.14);
+  background: rgba(29, 35, 52, 0.78) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-total-valid="true"] {
+  color: #70d5ad !important;
+  border: 1px solid rgba(79, 196, 151, 0.2);
+  background: rgba(24, 66, 54, 0.66) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-total-valid="false"] {
+  color: #ff9ab7 !important;
+  border: 1px solid rgba(224, 91, 130, 0.2);
+  background: rgba(74, 34, 48, 0.66) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-enabled] {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  background: rgba(29, 35, 52, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-enabled="true"] {
+  border-color: rgba(79, 196, 151, 0.32) !important;
+  background: rgba(24, 66, 54, 0.54) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch[aria-checked="false"].moki-switch-track,
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch[aria-checked="false"] .moki-switch-track {
+  border: 1px solid rgba(166, 176, 208, 0.34);
+  background: #4b536b !important;
+  box-shadow: inset 0 1px 2px rgba(7, 10, 20, 0.3);
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch[aria-checked="true"].moki-switch-track,
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch[aria-checked="true"] .moki-switch-track {
+  border: 1px solid rgba(190, 184, 255, 0.46);
+  background: #6f65d2 !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(111, 101, 210, 0.12);
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch .moki-switch-thumb {
+  background: #f8f9ff !important;
+  box-shadow: 0 1px 3px rgba(3, 6, 15, 0.5), inset 0 0 0 1px rgba(45, 52, 76, 0.12);
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch:focus-visible {
+  outline: 2px solid #aaa4ff;
+  outline-offset: 2px;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog) button.moki-switch:disabled {
+  opacity: 0.58;
+}
+
+html[data-color-scheme="dark"] .moki-report-block {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  background: rgba(29, 35, 52, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-target-selected] {
+  border-color: rgba(122, 132, 168, 0.2) !important;
+  background: rgba(24, 30, 45, 0.76) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-settings-section [data-report-target-selected="true"] {
+  border-color: rgba(170, 164, 255, 0.38) !important;
+  background: rgba(78, 69, 137, 0.3) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-target-manager {
+  color: #e5e7f2;
+  border-color: rgba(122, 132, 168, 0.24) !important;
+  background: rgba(29, 35, 52, 0.9) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-target-manager:hover {
+  border-color: rgba(170, 164, 255, 0.42) !important;
+  background: rgba(128, 116, 216, 0.16) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-chat-dialog {
+  color: #eef0f8;
+  border: 1px solid rgba(122, 132, 168, 0.3);
+  background: #20263a !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-schedule {
+  color: #aeb6cc !important;
+  border: 1px solid rgba(122, 132, 168, 0.14);
+  background: rgba(29, 35, 52, 0.72) !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-actions {
+  border-color: rgba(122, 132, 168, 0.22) !important;
+  background: rgba(29, 35, 52, 0.96) !important;
+  box-shadow: 0 -12px 28px rgba(7, 10, 20, 0.18);
+}
+
+html[data-color-scheme="dark"] .moki-report-actions button:first-child {
+  color: #ffffff;
+  background: #6f65d2 !important;
+}
+
+html[data-color-scheme="dark"] .moki-report-actions button:last-child {
+  color: #d7dbea;
+  border-color: rgba(122, 132, 168, 0.3) !important;
+  background: rgba(37, 44, 64, 0.92);
+}
+
+/* Embedded sites render in their own light/dark context. Keep the iframe
+   viewport opaque so global dark surface overrides cannot cover the preview. */
+html[data-color-scheme="dark"] #root :is(
+  .native-whiteboard-link-preview,
+  .native-whiteboard-link-preview-fallback
+) {
+  background: #ffffff !important;
+  color-scheme: light;
+  box-shadow: inset 0 0 0 1px rgba(122, 132, 168, 0.2);
+}
+
+html[data-color-scheme="dark"] #root .native-whiteboard-preview-toggle {
+  color: #d8d4ff !important;
+  border-color: rgba(170, 164, 255, 0.36) !important;
+  background: rgba(30, 36, 54, 0.94) !important;
+}
+
+/* Dialogs are rendered outside .desktop-app-root, so they do not inherit the
+   application-level keyboard focus ring from styles.css. Keep icon and text
+   actions visible when navigating dark-mode dialogs with the keyboard. */
+html[data-color-scheme="dark"]
+  :where(dialog)
+  :where(button, a[href], [role="button"]):focus-visible {
+  outline: 2px solid #aaa4ff;
+  outline-offset: 3px;
+}
+/* Dialog chrome shares one palette even when legacy utility colors are
+   remapped by the generated dark theme (including body-portaled dialogs). */
+html[data-color-scheme="dark"] :is(#root, dialog, [aria-modal="true"]) .moki-dialog-header {
+  background: var(--dialog-header-background) !important;
+  border-color: var(--dialog-header-border) !important;
+  color: var(--dialog-header-ink) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog, [aria-modal="true"]) .moki-dialog-header :is(h1, h2, h3, b) {
+  color: var(--dialog-header-ink) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog, [aria-modal="true"]) .moki-dialog-header p {
+  color: var(--dialog-header-muted) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog, [aria-modal="true"]) .moki-dialog-header button:is([aria-label*="关闭"], [title*="关闭"], [aria-label="稍后更新"]) {
+  background: var(--dialog-close-background) !important;
+  border-color: var(--dialog-header-border) !important;
+  color: var(--dialog-header-muted) !important;
+}
+
+html[data-color-scheme="dark"] :is(#root, dialog, [aria-modal="true"]) .moki-dialog-header button:is([aria-label*="关闭"], [title*="关闭"], [aria-label="稍后更新"]):hover {
+  background: var(--dialog-close-hover) !important;
+  color: var(--dialog-header-ink) !important;
+}

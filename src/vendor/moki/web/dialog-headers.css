@@ -1,0 +1,127 @@
+/* Shared chrome for app dialogs, including body portals and native dialogs.
+   Explicit markers keep document/editor content headers out of these rules. */
+:root {
+  --dialog-header-background: #fff;
+  --dialog-header-border: #e7e9f2;
+  --dialog-header-ink: #242a40;
+  --dialog-header-muted: #858b9d;
+  --dialog-close-background: #f3f4f8;
+  --dialog-close-hover: #e9eaf1;
+}
+
+html[data-color-scheme="dark"] {
+  --dialog-header-background: #1d2434;
+  --dialog-header-border: #394258;
+  --dialog-header-ink: #e8edf7;
+  --dialog-header-muted: #9da9be;
+  --dialog-close-background: #2b3448;
+  --dialog-close-hover: #394258;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  height: auto;
+  padding: 8px 16px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--dialog-header-border);
+  background: var(--dialog-header-background);
+  color: var(--dialog-header-ink);
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header > div {
+  min-width: 0;
+}
+
+/* Short explanatory captions share the title row when there is room. */
+:is(dialog, [aria-modal="true"]) .moki-dialog-header > div:has(> h2) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header button {
+  min-height: 32px;
+  height: 32px;
+  padding-block: 4px;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header :is(h1, h2, h3, b) {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  letter-spacing: normal;
+  color: var(--dialog-header-ink);
+  overflow-wrap: anywhere;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dialog-header-muted);
+}
+
+/* Decorative English eyebrows should not consume a separate title row. */
+:is(dialog, [aria-modal="true"]) .moki-dialog-header p:is([class*="uppercase"], [class*="tracking-"]) {
+  display: none;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header :is(span, div):is([class~="size-10"], [class~="size-11"]) {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header > div + div {
+  margin-top: 0;
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header button:is([aria-label*="关闭"], [title*="关闭"], [aria-label="稍后更新"]) {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--dialog-header-border);
+  border-radius: 10px;
+  background: var(--dialog-close-background);
+  color: var(--dialog-header-muted);
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header button:is([aria-label*="关闭"], [title*="关闭"], [aria-label="稍后更新"]):hover {
+  background: var(--dialog-close-hover);
+  color: var(--dialog-header-ink);
+}
+
+:is(dialog, [aria-modal="true"]) .moki-dialog-header button:is([aria-label*="关闭"], [title*="关闭"], [aria-label="稍后更新"]) svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Flush headers on dialogs whose original surface supplied body padding. */
+:is(dialog, [aria-modal="true"]) .moki-dialog-header-inset-4 { --dialog-surface-padding: 1rem; }
+:is(dialog, [aria-modal="true"]) .moki-dialog-header-inset-5 { --dialog-surface-padding: 1.25rem; }
+:is(dialog, [aria-modal="true"]) .moki-dialog-header-inset-6 { --dialog-surface-padding: 1.5rem; }
+:is(dialog, [aria-modal="true"]) :is(.moki-dialog-header-inset-4, .moki-dialog-header-inset-5, .moki-dialog-header-inset-6) {
+  margin: calc(-1 * var(--dialog-surface-padding)) calc(-1 * var(--dialog-surface-padding)) 0;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+:is(dialog, [aria-modal="true"]) :is(.moki-dialog-header-inset-4, .moki-dialog-header-inset-5, .moki-dialog-header-inset-6) + * {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  :is(dialog, [aria-modal="true"]) .moki-dialog-header { padding-inline: 12px; }
+}

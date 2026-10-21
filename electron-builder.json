@@ -1,0 +1,28 @@
+{
+  "appId": "com.moki.whiteboard",
+  "productName": "MOKI 白板",
+  "copyright": "Copyright © 2026 MOKI",
+  "asar": true,
+  "asarUnpack": ["dist/**/*", "node_modules/**/*", "package.json"],
+  "npmRebuild": false,
+  "electronDist": "node_modules/electron/dist",
+  "directories": {"output": "release", "buildResources": "public"},
+  "files": ["dist/**/*", "!dist/**/*.test.*", "package.json"],
+  "win": {
+    "target": [{"target": "nsis", "arch": ["x64"]}, {"target": "zip", "arch": ["x64"]}],
+    "icon": "public/moki-whiteboard-icon.ico",
+    "executableName": "MOKI Whiteboard",
+    "artifactName": "MOKI-Whiteboard-${version}-Windows-${arch}.${ext}"
+  },
+  "nsis": {
+    "include": "build/installer.nsh",
+    "artifactName": "MOKI-Whiteboard-Setup-${version}-${arch}.${ext}",
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "MOKI 白板",
+    "deleteAppDataOnUninstall": false
+  }
+}

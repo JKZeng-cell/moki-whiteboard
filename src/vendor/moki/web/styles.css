@@ -1,0 +1,2317 @@
+@import "tailwindcss" source("../");
+@import "./fonts.css";
+@import "./dialog-headers.css";
+
+@theme inline {
+  --font-sans: var(--font-ui);
+}
+
+/* Electron can report a non-hover primary input on touch-capable Windows
+   devices even while the user is operating with a mouse. Keep hover feedback
+   tied to the actual :hover state instead of Tailwind's media-query gate. */
+@custom-variant hover (&:hover);
+
+:root {
+  --font-ui: Inter, "MOKI CJK", sans-serif;
+  font-family: var(--font-ui);
+  color: #171b2c;
+  background: #e7e8f4;
+  font-synthesis: none;
+  --ink: #171b2c;
+  --page:
+    radial-gradient(circle at 8% 0%, #dfe4ff 0, transparent 32%),
+    radial-gradient(circle at 100% 100%, #f8dce7 0, transparent 28%), #ececf4;
+  --shell: rgba(245, 247, 252, 0.91);
+  --font-scale: 1;
+  --effective-font-scale: 1;
+  --section-gap: 1rem;
+  --control-block-padding: 1.5rem;
+  --desktop-shadow-gutter: 12px;
+}
+
+.moki-settings-page-dialog {
+  --moki-settings-dialog-gap: 12px;
+  --moki-settings-dialog-width: calc((var(--moki-settings-frame-width, 100vw) - 2 * var(--moki-settings-dialog-gap)) * 0.8);
+  --moki-settings-dialog-height: calc((var(--moki-settings-frame-height, 100dvh) - 2 * var(--moki-settings-dialog-gap)) * 0.8);
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  left: calc(var(--moki-settings-frame-left, 0px) + (var(--moki-settings-frame-width, 100vw) - var(--moki-settings-dialog-width)) / 2);
+  top: calc(var(--moki-settings-frame-top, 0px) + (var(--moki-settings-frame-height, 100dvh) - var(--moki-settings-dialog-height)) / 2);
+  width: var(--moki-settings-dialog-width);
+  height: var(--moki-settings-dialog-height);
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 20px;
+}
+
+.moki-settings-page-dialog > .moki-settings-dialog-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.moki-settings-page-dialog .card-scroll-viewport {
+  --card-scroll-gutter: 8px;
+}
+
+.moki-settings-page-dialog .settings-category-nav {
+  margin-bottom: 10px;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 16px;
+}
+
+.moki-settings-page-dialog .settings-category-button {
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: 12px;
+}
+
+@media (min-width: 760px) {
+  .moki-settings-page-dialog .settings-category-nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .moki-settings-page-dialog {
+    --moki-settings-dialog-gap: 6px;
+    border-radius: 16px;
+  }
+
+  .moki-settings-page-dialog > .moki-settings-dialog-body {
+    padding: 8px;
+  }
+}
+
+@media (max-height: 640px), (max-width: 760px) {
+  .moki-settings-page-dialog .settings-category-button > span + span {
+    display: none;
+  }
+}
+
+html {
+  /* Keep rem-based layout and fixed-pixel desktop chrome on one coordinate
+     system. The user scale is applied to the complete app surface below so
+     typography, controls, gaps, and overlays grow together. */
+  font-size: 16px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+html[data-desktop-shell="true"],
+html[data-desktop-shell="true"] body {
+  background: transparent;
+}
+
+/* The detached assistant does not mount AppShell, so it owns a dedicated
+   transparent document state. This prevents the root page color from showing
+   through its shadow gutter as a rectangular Electron layer. */
+html[data-moki-assistant-detached="true"],
+html[data-moki-assistant-detached="true"] body,
+html[data-moki-assistant-detached="true"] #root {
+  background: transparent;
+}
+
+html[data-desktop-shell="true"] {
+  /* Keep only the area outside the rounded client window transparent. */
+  --shell: #f5f7fc;
+}
+
+/* Native ::backdrop and body portals share the actual client boundary via
+   installClientModalBoundary, including browser layout, zoom and maximize. */
+
+/* Keep inset layout for in-app fullscreen surfaces such as the whiteboard;
+   portal and top-layer modal clipping is handled independently above. */
+.desktop-shell-windowed .fixed.inset-0 {
+  inset: var(--desktop-shadow-gutter);
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+/* Transparent BrowserWindows are rectangular at the compositor level. Keep
+   the renderer surface isolated and explicitly clipped so a stale first
+   paint, native resize frame, or child background cannot leak through a
+   rounded macOS corner. */
+.desktop-shell-windowed .desktop-shell-surface {
+  isolation: isolate;
+  clip-path: inset(0 round 22px);
+}
+
+/* A transparent frameless BrowserWindow clips renderer pixels at its native
+   bounds. Keep this shadow inside the reserved transparent gutter so every
+   edge remains visible; maximized windows omit the gutter and this class. */
+.desktop-client-edge-shadow {
+  box-shadow:
+    0 0 0 1px rgba(38, 43, 67, 0.08),
+    0 2px 8px rgba(27, 31, 49, 0.22),
+    0 6px 12px -6px rgba(27, 31, 49, 0.34);
+}
+
+.desktop-client-edge-shadow-macos {
+  box-shadow: none;
+}
+
+.desktop-shell-surface > .desktop-window-titlebar .desktop-window-controls-macos {
+  left: 12px;
+  height: 40px;
+}
+
+/* Short laptop work areas use the effective application scale. Keep the root
+   rem coordinate at 16px so the saved font setting scales fixed and rem-based
+   controls together instead of shrinking only part of the interface. */
+@media (max-height: 900px) {
+  :root {
+    --desktop-shadow-gutter: 8px;
+  }
+
+  .desktop-shell-windowed .desktop-shell-surface {
+    border-radius: 18px;
+    clip-path: inset(0 round 18px);
+  }
+
+  .desktop-shell-windowed .desktop-app-sidebar {
+    padding-bottom: 12px;
+  }
+}
+
+@media (max-width: 1100px), (max-height: 680px) {
+  .desktop-shell-surface {
+    grid-template-columns: 54px minmax(0, 1fr) !important;
+  }
+
+  .desktop-app-sidebar {
+    padding-bottom: 12px !important;
+  }
+
+  .desktop-app-root:not(.desktop-shell-windowed) .desktop-app-sidebar {
+    padding-top: 12px !important;
+  }
+
+  .desktop-app-sidebar nav {
+    gap: 6px !important;
+  }
+
+  .desktop-shell-windowed .shell-main-scroll:not(.moki-assistant-shell-main) {
+    padding-inline: 14px !important;
+    padding-bottom: 14px !important;
+  }
+}
+
+/* App-level modal backdrops must also cover Electron's titlebar, sidebar, and
+   resize hit areas. Visual chrome yields while a modal is present, while the
+   narrow resize handles remain interactive at the rounded client edge. */
+.desktop-app-root:has(
+    .fixed.inset-0[role="dialog"][aria-modal="true"],
+    .fixed.inset-0 [role="dialog"][aria-modal="true"],
+    .fixed.inset-0[role="alertdialog"][aria-modal="true"],
+    .fixed.inset-0 [role="alertdialog"][aria-modal="true"]
+  )
+  .desktop-shell-chrome:not(.desktop-window-resize-handle) {
+  z-index: 0;
+}
+
+.desktop-app-root:has(
+    .fixed.inset-0[role="dialog"][aria-modal="true"],
+    .fixed.inset-0 [role="dialog"][aria-modal="true"],
+    .fixed.inset-0[role="alertdialog"][aria-modal="true"],
+    .fixed.inset-0 [role="alertdialog"][aria-modal="true"]
+  )
+  .desktop-window-resize-handle {
+  z-index: 2147483646 !important;
+  pointer-events: auto;
+}
+
+/* A modal owns the application interaction layer. Keep the assistant's
+   floating launcher/panel behind it, but leave native window resize handles
+   available at the rounded client edge, inside the shadow gutter. */
+.desktop-app-root:has(
+    [role="dialog"][aria-modal="true"],
+    [role="alertdialog"][aria-modal="true"]
+  )
+  .moki-assistant-floating {
+  z-index: 0 !important;
+  pointer-events: none;
+}
+
+.desktop-window-controls,
+.desktop-window-control {
+  -webkit-app-region: no-drag;
+}
+
+.desktop-window-control-macos {
+  color: transparent;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.16);
+}
+
+.desktop-window-controls-macos:hover .desktop-window-control-macos,
+.desktop-window-control-macos:focus-visible {
+  color: rgba(48, 36, 31, 0.7);
+}
+
+.desktop-window-control-macos-close {
+  background: #ff5f57;
+}
+
+.desktop-window-control-macos-minimize {
+  background: #febc2e;
+}
+
+.desktop-window-control-macos-maximize {
+  background: #28c840;
+}
+
+.desktop-window-control-macos:focus-visible {
+  outline: 2px solid #625bc5;
+  outline-offset: 2px;
+}
+
+/* Scroll content inside a small paint gutter so card shadows do not end at
+   a hard rectangular clip. The fade only covers the gutter and entering rows;
+   fully visible cards remain opaque. Keep clipping local to each scroll area. */
+.card-scroll-viewport {
+  --card-scroll-gutter: 16px;
+  margin-inline: calc(-1 * var(--card-scroll-gutter));
+  margin-top: -12px;
+  padding: 12px var(--card-scroll-gutter) 28px;
+  scroll-padding: 12px var(--card-scroll-gutter) 28px;
+  scrollbar-color: rgba(112, 120, 145, 0.18) transparent;
+  scrollbar-width: thin;
+  mask-image:
+    linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 8px), transparent),
+    linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+  mask-composite: intersect;
+}
+
+.card-scroll-viewport:is(:hover, :focus-within) {
+  scrollbar-color: rgba(112, 120, 145, 0.34) transparent;
+}
+
+.card-scroll-viewport::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.card-scroll-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card-scroll-viewport::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(112, 120, 145, 0.18);
+  background-clip: padding-box;
+}
+
+.card-scroll-viewport:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+  background: rgba(112, 120, 145, 0.34);
+  background-clip: padding-box;
+}
+
+.card-scroll-viewport-compact {
+  padding-bottom: 12px;
+}
+
+.card-scroll-viewport-compact > section {
+  margin-bottom: 0;
+}
+
+/* Keep the native drag region inside the header's resize strips and corners.
+   Native hit testing ignores renderer z-index, so it must not overlap them. */
+.moki-assistant-detached-drag-region {
+  -webkit-app-region: drag;
+}
+
+.moki-assistant-detached-header .moki-assistant-detached-identity {
+  min-width: 7rem;
+  gap: 0.5rem;
+}
+
+.moki-assistant-detached-header .moki-assistant-detached-provider select {
+  width: 5.6rem;
+}
+
+.moki-assistant-detached-header .moki-assistant-detached-controls {
+  gap: 0.25rem;
+}
+
+.moki-assistant-detached-header .moki-assistant-detached-controls > button {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.65rem;
+}
+
+.moki-assistant-detached-header button,
+.moki-assistant-detached-header select,
+.moki-assistant-detached-header input,
+.moki-assistant-detached-header textarea,
+.moki-assistant-detached-header a,
+.moki-assistant-detached-header label,
+.moki-assistant-detached-header [contenteditable="true"] {
+  -webkit-app-region: no-drag;
+}
+
+/* Keep the detached-window shadow inside its transparent capture gutter. The
+   shadow follows this rounded surface instead of the BrowserWindow rectangle. */
+.moki-assistant-detached-surface {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.78),
+    0 3px 9px rgba(31, 35, 58, 0.18),
+    0 10px 24px -10px rgba(31, 35, 58, 0.42);
+}
+
+.desktop-window-control {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  pointer-events: auto;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms ease;
+}
+
+.desktop-window-control:hover {
+  background: #e3e6f0;
+  color: #242a40;
+  box-shadow: inset 0 -2px 0 rgba(98, 91, 197, 0.28);
+}
+
+.desktop-window-control:active {
+  background: #d4d8e5;
+  transform: scale(0.92);
+  box-shadow: inset 0 2px 5px rgba(36, 42, 64, 0.18);
+}
+
+.desktop-window-control svg {
+  transition: transform 140ms ease;
+}
+
+.desktop-window-control:hover svg {
+  transform: scale(1.14);
+}
+
+.desktop-window-control:active svg {
+  transform: scale(0.88);
+}
+
+.desktop-window-control-close:hover {
+  background: #e54857;
+  color: #fff;
+  box-shadow: inset 0 -2px 0 rgba(132, 26, 45, 0.35);
+}
+
+.desktop-window-control-close:active {
+  background: #bd3243;
+}
+
+.moki-menu-surface {
+  border: 1px solid rgba(218, 220, 232, 0.92);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.975);
+  box-shadow:
+    0 18px 48px rgba(31, 35, 58, 0.2),
+    0 3px 10px rgba(31, 35, 58, 0.08);
+  backdrop-filter: blur(18px);
+  animation: moki-menu-enter 140ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.moki-menu-item {
+  border-radius: 0.7rem;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.moki-menu-surface :is([role="menuitem"], [role="menuitemradio"]):hover,
+.moki-menu-surface
+  :is([role="menuitem"], [role="menuitemradio"]):focus-visible {
+  outline: none;
+  background: #f0efff;
+}
+
+.moki-menu-surface [role="menuitemradio"][aria-checked="true"] {
+  background: #ebe9ff;
+  color: #554db9;
+}
+
+.moki-menu-surface :is([role="menuitem"], [role="menuitemradio"]):active {
+  transform: scale(0.985);
+}
+
+.moki-menu-surface :is([role="menuitem"], [role="menuitemradio"]):disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.moki-menu-divider {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: #ececf3;
+}
+
+.moki-menu-column-divider {
+  border-color: rgba(218, 220, 232, 0.92);
+}
+
+@keyframes moki-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.moki-assistant-mark {
+  --moki-body-color: #292c41;
+  --moki-eye-color: #fff;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  contain: layout;
+  isolation: isolate;
+  overflow: visible;
+  border-radius: 999px;
+  transform-origin: center;
+  transition:
+    transform 140ms cubic-bezier(0.2, 1.2, 0.35, 1),
+    filter 120ms ease;
+}
+
+.moki-assistant-base-glow {
+  position: absolute;
+  z-index: 0;
+  right: 8%;
+  bottom: -10%;
+  left: 8%;
+  height: 34%;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at center, rgb(151 141 255 / 0.78) 0%, rgb(117 105 229 / 0.38) 38%, rgb(81 203 207 / 0.16) 62%, transparent 78%);
+  filter: blur(max(1px, 0.075em));
+  opacity: calc(0.4 + var(--moki-proximity, 0) * 0.32);
+  transform: translate3d(
+    var(--moki-shift-x, 0px),
+    calc(1px + var(--moki-shift-y, 0px)),
+    0
+  );
+  transform-origin: center;
+  animation: moki-assistant-base-glow 2.8s ease-in-out infinite;
+  pointer-events: none;
+  transition:
+    opacity 110ms ease,
+    transform 100ms cubic-bezier(0.2, 0.82, 0.25, 1);
+}
+
+.moki-assistant-mark-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  transform: perspective(92px)
+    translate3d(
+      var(--moki-shift-x, 0px),
+      var(--moki-shift-y, 0px),
+      var(--moki-depth-z, 0px)
+    )
+    rotateX(var(--moki-tilt-x, 0deg))
+    rotateY(var(--moki-tilt-y, 0deg)) rotateZ(var(--moki-roll, 0deg))
+    scale(var(--moki-depth-scale, 1));
+  transform-style: preserve-3d;
+  transition:
+    transform 95ms cubic-bezier(0.2, 0.82, 0.25, 1),
+    filter 110ms ease;
+  filter: drop-shadow(0 2px 2px rgb(20 24 42 / 0.28));
+  will-change: transform;
+}
+
+.moki-assistant-mark-stage::before {
+  position: absolute;
+  z-index: 1;
+  inset: 4%;
+  border: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset -2px -3px 5px rgb(12 16 35 / calc(0.08 + var(--moki-proximity, 0) * 0.16)),
+    inset 2px 2px 4px rgb(255 255 255 / calc(0.06 + var(--moki-proximity, 0) * 0.15));
+  content: "";
+  pointer-events: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.moki-assistant-mark-stage::after {
+  position: absolute;
+  inset: 3%;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--moki-light-x, 50%) var(--moki-light-y, 42%),
+    rgb(255 255 255 / 0.34),
+    rgb(255 255 255 / 0.08) 24%,
+    transparent 58%
+  );
+  content: "";
+  mix-blend-mode: soft-light;
+  z-index: 2;
+  opacity: calc(0.12 + var(--moki-proximity, 0) * 0.72);
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+.moki-assistant-mark[data-pointer-near="true"] .moki-assistant-mark-stage {
+  filter: drop-shadow(
+    var(--moki-shadow-x, 0) var(--moki-shadow-y, 2px) 2px
+      rgb(11 15 30 / 0.32)
+  );
+}
+
+.moki-assistant-mark-stage > svg {
+  grid-area: 1 / 1;
+}
+
+.moki-assistant-interaction {
+  --moki-look-x: 0px;
+  --moki-look-y: 0px;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.moki-assistant-mark.is-active:not(.is-busy) svg {
+  animation: moki-assistant-idle 4.6s ease-in-out infinite;
+}
+
+.group:hover .moki-assistant-mark,
+.group\/assistant-mark:hover .moki-assistant-mark {
+  transform: rotate(-9deg) scaleX(1.1) scaleY(0.92) translateY(1px);
+  filter: drop-shadow(0 2px 5px rgb(196 190 255 / 0.6));
+}
+
+/* The launcher has no colored backing plate. Keep every shadow inside the
+   desktop orb window's 8px transparent gutter so the halo is never clipped. */
+.moki-assistant-orb-glow {
+  filter:
+    drop-shadow(0 3px 3px rgb(36 42 64 / 0.3))
+    drop-shadow(-2px 0 3px rgb(124 105 235 / 0.36))
+    drop-shadow(2px -1px 3px rgb(83 198 211 / 0.26));
+  transition: filter 180ms ease;
+}
+
+.moki-assistant-orb:hover .moki-assistant-orb-glow {
+  filter:
+    drop-shadow(0 4px 3px rgb(36 42 64 / 0.32))
+    drop-shadow(-2px 0 3px rgb(124 105 235 / 0.42))
+    drop-shadow(2px -1px 3px rgb(83 198 211 / 0.3));
+}
+
+.moki-assistant-orb:hover .moki-assistant-mark {
+  filter: none;
+}
+
+.group:active .moki-assistant-mark,
+.group\/assistant-mark:active .moki-assistant-mark {
+  transform: rotate(8deg) scaleX(0.92) scaleY(1.08);
+}
+
+.moki-assistant-blob {
+  fill: var(--moki-body-color);
+  transform-origin: 16px 16px;
+}
+
+.moki-assistant-bottom-light {
+  opacity: calc(0.5 + var(--moki-proximity, 0) * 0.36);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: moki-assistant-bottom-light 2.8s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.moki-assistant-edge-highlight,
+.moki-assistant-edge-glint {
+  fill: none;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.moki-assistant-edge-highlight {
+  stroke-width: 0.72;
+  opacity: calc(0.62 + var(--moki-proximity, 0) * 0.3);
+  filter: drop-shadow(0 0 0.7px rgb(210 205 255 / 0.5));
+  transition: opacity 180ms ease;
+}
+
+.moki-assistant-edge-glint {
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-dasharray: 7 15;
+  animation: moki-assistant-edge-glint 4.8s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+  filter: drop-shadow(0 0 1.1px rgb(255 255 255 / 0.72));
+}
+
+.moki-assistant-eye {
+  fill: var(--moki-eye-color);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    translate 65ms cubic-bezier(0.2, 0.82, 0.25, 1),
+    rotate 95ms cubic-bezier(0.2, 0.82, 0.25, 1),
+    scale 95ms cubic-bezier(0.2, 0.82, 0.25, 1);
+  will-change: translate, rotate, scale;
+}
+
+.moki-assistant-eye-left {
+  rotate: var(--moki-eye-left-tilt, 0deg);
+  scale: var(--moki-eye-left-scale-x, 1) var(--moki-eye-left-scale-y, 1);
+  transform-origin: 58% 52%;
+}
+
+.moki-assistant-eye-right {
+  rotate: var(--moki-eye-right-tilt, 0deg);
+  scale: var(--moki-eye-right-scale-x, 1) var(--moki-eye-right-scale-y, 1);
+  transform-origin: 42% 52%;
+}
+
+.group:hover .moki-assistant-eye,
+.group\/assistant-mark:hover .moki-assistant-eye,
+.moki-assistant-mark[data-pointer-near="true"] .moki-assistant-eye {
+  translate: var(--moki-look-x, 0.7px) var(--moki-look-y, 0px);
+}
+
+.moki-assistant-mark[data-ambient-motion="true"] .moki-assistant-eye {
+  translate: var(--moki-look-x, 0px) var(--moki-look-y, 0px);
+}
+
+.moki-assistant-mark.is-active .moki-assistant-eye-right {
+  animation: moki-assistant-blink 4.8s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-active .moki-assistant-eye-left {
+  animation: moki-assistant-blink 4.8s 2.4s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-busy {
+  animation: moki-assistant-bounce 0.78s cubic-bezier(0.25, 0.8, 0.35, 1)
+    infinite alternate;
+}
+
+.moki-assistant-mark.is-busy .moki-assistant-eye-left,
+.moki-assistant-mark.is-busy .moki-assistant-eye-right {
+  animation: moki-assistant-look 1.05s ease-in-out infinite alternate;
+}
+
+.moki-assistant-mark.is-reacting {
+  animation: moki-assistant-react 620ms cubic-bezier(0.2, 1.6, 0.35, 1) both;
+}
+
+.moki-assistant-mark.is-expression-thinking:not(.is-busy) {
+  animation: moki-assistant-thinking 1.55s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-expression-thinking .moki-assistant-eye-left {
+  animation: moki-assistant-thinking-left 1.4s ease-in-out infinite alternate;
+}
+
+.moki-assistant-mark.is-expression-thinking .moki-assistant-eye-right {
+  animation: moki-assistant-thinking-right 1.4s ease-in-out infinite alternate;
+}
+
+.moki-assistant-mark.is-expression-sleepy svg {
+  animation: moki-assistant-sleepy 2.8s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-expression-sleepy .moki-assistant-eye-left,
+.moki-assistant-mark.is-expression-sleepy .moki-assistant-eye-right {
+  animation: moki-assistant-sleepy-eyes 2.8s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-expression-curious .moki-assistant-eye-left {
+  animation: none;
+  transform: translate(-0.4px, -0.45px) scale(1.12);
+}
+
+.moki-assistant-mark.is-expression-curious .moki-assistant-eye-right {
+  animation: none;
+  transform: translate(0.4px, 0.65px) scale(0.82);
+}
+
+.moki-assistant-mark.is-expression-happy .moki-assistant-eye-left {
+  animation: moki-assistant-happy-left 1.9s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-expression-happy .moki-assistant-eye-right {
+  animation: moki-assistant-happy-right 1.9s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-expression-confused .moki-assistant-eye-left {
+  animation: none;
+  transform: translateY(-0.55px) rotate(-13deg) scaleY(0.82);
+}
+
+.moki-assistant-mark.is-expression-confused .moki-assistant-eye-right {
+  animation: none;
+  transform: translateY(0.5px) rotate(12deg) scaleY(0.92);
+}
+
+.moki-assistant-mark.is-expression-surprised svg {
+  animation: moki-assistant-surprised 1.4s cubic-bezier(0.2, 1.4, 0.35, 1)
+    infinite;
+}
+
+.moki-assistant-mark.is-expression-surprised .moki-assistant-eye-left,
+.moki-assistant-mark.is-expression-surprised .moki-assistant-eye-right {
+  animation: none;
+  transform: scaleX(0.78) scaleY(1.22);
+}
+
+.moki-assistant-mark.is-motion-listening {
+  animation: moki-assistant-listening 1.15s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-motion-thinking {
+  animation: moki-assistant-conversation-thinking 1.45s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-motion-speaking {
+  animation: moki-assistant-speaking 0.82s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-motion-working {
+  animation: moki-assistant-working 0.96s cubic-bezier(0.3, 0.75, 0.35, 1) infinite;
+}
+
+.moki-assistant-mark.is-motion-connecting {
+  animation: moki-assistant-connecting 1.35s ease-in-out infinite;
+}
+
+.moki-assistant-mark.is-motion-success {
+  animation: moki-assistant-success 0.88s cubic-bezier(0.2, 1.4, 0.35, 1) both;
+}
+
+.moki-assistant-mark.is-motion-error {
+  animation: moki-assistant-error 0.58s ease-in-out both;
+}
+
+.moki-assistant-mark:is(.is-motion-speaking, .is-motion-working) .moki-assistant-mark-stage::after {
+  animation: moki-assistant-conversation-light 1.1s ease-in-out infinite alternate;
+}
+
+.moki-assistant-mark:is(.is-motion-speaking, .is-motion-working, .is-motion-connecting) .moki-assistant-base-glow,
+.moki-assistant-mark:is(.is-motion-speaking, .is-motion-working, .is-motion-connecting) .moki-assistant-bottom-light {
+  animation-duration: 1.35s;
+}
+
+@keyframes moki-assistant-base-glow {
+  0%, 100% { filter: blur(max(1px, 0.075em)) brightness(0.86); scale: 0.9 0.72; }
+  48% { filter: blur(max(1px, 0.075em)) brightness(1.22); scale: 1.08 1; }
+  72% { filter: blur(max(1px, 0.075em)) brightness(1.02); scale: 0.98 0.86; }
+}
+
+@keyframes moki-assistant-bottom-light {
+  0%, 100% { filter: brightness(0.78); scale: 0.9 0.82; translate: 0 0.7px; }
+  50% { filter: brightness(1.28); scale: 1.08 1.02; translate: 0 -0.5px; }
+}
+
+@keyframes moki-assistant-edge-glint {
+  0%, 18% { opacity: 0.28; stroke-dashoffset: 9; }
+  48% { opacity: 0.96; }
+  82%, 100% { opacity: 0.38; stroke-dashoffset: -10; }
+}
+
+@keyframes moki-assistant-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  45% {
+    transform: translateY(-0.8px) rotate(-1.5deg);
+  }
+  70% {
+    transform: translateY(0.4px) rotate(1deg);
+  }
+}
+
+@keyframes moki-assistant-blink {
+  0%,
+  44%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes moki-assistant-bounce {
+  from {
+    transform: translateY(1px) rotate(-4deg) scaleX(1.06) scaleY(0.94);
+  }
+  to {
+    transform: translateY(-2px) rotate(4deg) scaleX(0.96) scaleY(1.06);
+  }
+}
+
+@keyframes moki-assistant-look {
+  from {
+    translate: -0.6px 0;
+  }
+  to {
+    translate: 0.9px 0;
+  }
+}
+
+@keyframes moki-assistant-react {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  28% {
+    transform: scaleX(1.14) scaleY(0.86) translateY(2px) rotate(-5deg);
+  }
+  58% {
+    transform: scaleX(0.9) scaleY(1.12) translateY(-4px) rotate(6deg);
+  }
+  100% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes moki-assistant-thinking {
+  0%,
+  100% {
+    transform: rotate(-2deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-1px);
+  }
+}
+
+@keyframes moki-assistant-thinking-left {
+  from {
+    transform: translate(-0.55px, -0.45px) rotate(-7deg);
+  }
+  to {
+    transform: translate(0.35px, 0.2px) rotate(2deg);
+  }
+}
+
+@keyframes moki-assistant-thinking-right {
+  from {
+    transform: translate(-0.25px, -0.7px) scale(0.9);
+  }
+  to {
+    transform: translate(0.6px, 0.05px) scale(1.02);
+  }
+}
+
+@keyframes moki-assistant-sleepy {
+  0%,
+  100% {
+    transform: translateY(1px) rotate(-3deg) scaleY(0.98);
+  }
+  50% {
+    transform: translateY(2px) rotate(-5deg) scaleY(0.94);
+  }
+}
+
+@keyframes moki-assistant-sleepy-eyes {
+  0%,
+  100% {
+    transform: translateY(1px) rotate(-5deg) scaleY(0.13);
+  }
+  55% {
+    transform: translateY(1.25px) rotate(-3deg) scaleY(0.08);
+  }
+}
+
+@keyframes moki-assistant-happy-left {
+  0%,
+  100% {
+    transform: translateY(0.7px) rotate(9deg) scaleY(0.46);
+  }
+  50% {
+    transform: translateY(0.45px) rotate(6deg) scaleY(0.58);
+  }
+}
+
+@keyframes moki-assistant-happy-right {
+  0%,
+  100% {
+    transform: translateY(0.7px) rotate(-9deg) scaleY(0.46);
+  }
+  50% {
+    transform: translateY(0.45px) rotate(-6deg) scaleY(0.58);
+  }
+}
+
+@keyframes moki-assistant-surprised {
+  0%,
+  74%,
+  100% {
+    transform: scale(1);
+  }
+  84% {
+    transform: scaleX(1.08) scaleY(1.12) translateY(-1px);
+  }
+}
+
+@keyframes moki-assistant-listening {
+  0%, 100% { translate: 0 0; scale: 1; }
+  45% { translate: 0 1px; scale: 1.045 0.965; }
+  72% { translate: 0 -1px; scale: 0.985 1.025; }
+}
+
+@keyframes moki-assistant-conversation-thinking {
+  0%, 100% { translate: -0.5px 0; rotate: -2deg; }
+  50% { translate: 0.7px -1px; rotate: 3deg; }
+}
+
+@keyframes moki-assistant-speaking {
+  0%, 100% { translate: 0 0; rotate: -1deg; scale: 1; }
+  42% { translate: 0 -1.5px; rotate: 1.8deg; scale: 1.035 0.985; }
+  70% { translate: 0 0.5px; rotate: 0deg; scale: 0.99 1.02; }
+}
+
+@keyframes moki-assistant-working {
+  0%, 100% { translate: -1px 0; rotate: -3deg; scale: 1; }
+  35% { translate: 1px -1px; rotate: 2deg; scale: 1.025; }
+  68% { translate: 0 0.5px; rotate: 4deg; scale: 0.985 1.02; }
+}
+
+@keyframes moki-assistant-connecting {
+  0%, 100% { translate: -0.8px 0; rotate: -4deg; scale: 0.98 1.015; }
+  50% { translate: 0.8px -1px; rotate: 4deg; scale: 1.025 0.99; }
+}
+
+@keyframes moki-assistant-success {
+  0% { translate: 0 0; rotate: 0deg; scale: 1; }
+  34% { translate: 0 -3px; rotate: -5deg; scale: 0.94 1.1; }
+  62% { translate: 0 1px; rotate: 4deg; scale: 1.08 0.94; }
+  100% { translate: 0 0; rotate: 0deg; scale: 1; }
+}
+
+@keyframes moki-assistant-error {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  24% { translate: -2px 0; rotate: -6deg; }
+  48% { translate: 2px 0; rotate: 6deg; }
+  72% { translate: -1px 0; rotate: -3deg; }
+}
+
+@keyframes moki-assistant-conversation-light {
+  from { filter: brightness(0.95); }
+  to { filter: brightness(1.18); }
+}
+
+.moki-assistant-activity-slide {
+  animation: moki-assistant-activity-enter 260ms cubic-bezier(0.2, 0.9, 0.25, 1)
+    both;
+}
+
+button.moki-assistant-activity-toggle {
+  min-height: 0 !important;
+}
+
+@keyframes moki-assistant-activity-enter {
+  from {
+    translate: 0 9px;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moki-assistant-mark,
+  .moki-assistant-mark *,
+  .moki-menu-surface,
+  .moki-assistant-activity-slide {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+html[data-density="compact"] {
+  --section-gap: 0.625rem;
+  --control-block-padding: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.desktop-app-root,
+.moki-assistant-detached,
+.moki-onboarding {
+  zoom: var(--effective-font-scale);
+}
+
+/* Keep user portraits sharp after Chromium applies the saved UI scale and the
+   operating system applies a fractional display scale. */
+.desktop-profile-avatar {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+button {
+  cursor: pointer;
+  min-height: 40px;
+}
+
+button.dashboard-calendar-signal-button {
+  height: 24px;
+  min-height: 24px !important;
+  padding-block: 0;
+  line-height: 1;
+}
+
+.moki-assistant-queue button {
+  min-height: 0;
+}
+
+/* Caption links must not inherit the global 40px form-button minimum. */
+.moki-assistant-composer-caption { min-height: 22px; line-height: 18px; }
+.moki-assistant-composer-caption button { min-height: 22px; height: 22px; padding-block: 0; }
+.moki-update-progress { appearance: none; border: 0; border-radius: 999px; background: #eeeaf5; }
+.moki-update-progress::-webkit-progress-bar { border-radius: 999px; background: #eeeaf5; }
+.moki-update-progress::-webkit-progress-value { border-radius: 999px; background: #8c75be; transition: width 180ms ease; }
+.moki-update-progress::-moz-progress-bar { border-radius: 999px; background: #8c75be; }
+
+@keyframes moki-content-enter {
+  from { opacity: .65; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shell-main-scroll, .moki-page-feedback { animation: moki-content-enter 160ms ease-out; }
+  .desktop-update-card { animation: moki-content-enter 180ms ease-out; }
+}
+.desktop-app-root button:focus-visible, .desktop-app-root a:focus-visible {
+  outline: 2px solid #8c75be;
+  outline-offset: 3px;
+}
+
+.moki-assistant-queue-row {
+  height: 28px;
+  min-height: 28px;
+  padding-block: 0;
+}
+
+.moki-skill-settings-section {
+  padding-top: 12px;
+}
+
+.moki-skill-settings-section > header {
+  margin-bottom: 12px;
+  gap: 8px;
+  align-items: center;
+}
+
+/* The shared shadow gutter uses a negative top margin. Keep the skill list
+   below its compact header even when a partially visible row is scrolled in. */
+.moki-skill-settings-section > .card-scroll-viewport {
+  margin-top: 0;
+}
+
+.moki-skill-settings-section > header > span {
+  width: 32px;
+  height: 32px;
+}
+
+.moki-skill-settings-section > header h2 {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.moki-skill-settings-section > header p {
+  margin-top: 2px;
+  line-height: 16px;
+}
+
+button.moki-skill-upload-button {
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid transparent;
+}
+
+button.toolbox-switch,
+button.toolbox-card-configure {
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+  padding: 0;
+}
+
+button.library-list-sort-button {
+  height: 24px;
+  min-height: 0;
+}
+
+/* Header counters are compact clickable badges, not full-height controls. */
+button.task-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding-block: 0;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+button.library-filter-tag {
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  padding-block: 0;
+  line-height: 20px;
+}
+
+button.moki-generate-automation {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+button.library-history-tag-button {
+  height: 28px;
+  min-height: 0;
+}
+
+[data-whiteboard-toolbox] {
+  width: max-content;
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
+}
+
+[data-whiteboard-embedded="true"] > header {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-whiteboard-embedded="true"] > header > div:first-child {
+  flex-shrink: 0;
+}
+
+[data-whiteboard-embedded="true"] > header h1 {
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+[data-whiteboard-embedded="true"] > header p {
+  display: none;
+}
+
+[data-whiteboard-embedded="true"] > header > div:last-child {
+  width: auto;
+  min-width: 0;
+  gap: 4px;
+}
+
+[data-whiteboard-embedded="true"] > header > div:last-child > .relative {
+  flex-shrink: 0;
+}
+
+[data-whiteboard-embedded="true"] > header [aria-label="白板保存状态"] {
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 6px;
+  font-size: 10px;
+}
+
+[data-whiteboard-embedded="true"] > header [aria-label="白板保存状态"] > svg {
+  flex-shrink: 0;
+}
+
+[data-whiteboard-embedded="true"] > header button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  flex-shrink: 0;
+}
+
+[data-whiteboard-embedded="true"] > header .moki-menu-surface button {
+  width: 100%;
+  height: auto;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] {
+  bottom: 56px;
+  gap: 2px;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] > button,
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] > div > button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] > span {
+  display: none;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] > .relative {
+  position: static;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-toolbox] .moki-menu-surface {
+  max-width: calc(100% - 8px);
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-page-toolbar] > button {
+  width: 24px;
+  min-width: 0;
+  min-height: 28px;
+  height: 28px;
+}
+
+[data-whiteboard-embedded="true"] [data-whiteboard-page-toolbar] > button:first-child {
+  width: 112px;
+  padding-inline: 4px;
+}
+
+button.integration-sync-toggle {
+  min-height: 0;
+}
+
+button.integration-account-remove {
+  min-height: 28px;
+}
+
+button.integration-account-primary {
+  height: 28px;
+  min-height: 28px;
+}
+
+button.quick-entry-direct-open-toggle {
+  min-height: 20px;
+}
+
+button.automation-status-toggle {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  padding: 0 !important;
+}
+
+button.moki-role-orchestration-toggle {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 !important;
+}
+
+button.sidebar-page-toggle {
+  height: 24px !important;
+  min-height: 0 !important;
+}
+
+button.source-health-authorization-button {
+  min-height: 20px;
+}
+
+.memo-note-action {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+.memo-image-delete-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border-radius: 9999px;
+}
+
+.memo-note-editor {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 105, 133, 0.22) transparent;
+}
+
+.memo-note-editor::-webkit-scrollbar {
+  width: 6px;
+}
+
+.memo-note-editor::-webkit-scrollbar-thumb {
+  background: rgba(96, 105, 133, 0.18);
+  border-radius: 9999px;
+}
+
+.memo-preview-scroll {
+  overscroll-behavior-y: auto;
+  scrollbar-color: rgba(96, 105, 133, 0.4) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.memo-preview-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.memo-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.memo-preview-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: rgba(96, 105, 133, 0.36);
+  background-clip: padding-box;
+}
+
+.memo-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 105, 133, 0.56);
+  background-clip: padding-box;
+}
+
+.memo-strip-scroll {
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.memo-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.memo-notes-panel {
+  container-type: inline-size;
+}
+
+.dashboard-modules {
+  container: dashboard / inline-size;
+}
+
+/* Use usable content width, not the window's xl breakpoint. Desktop-sized
+   content keeps its original composition while the side rail shrinks first. */
+@container dashboard (min-width: 640px) {
+  .dashboard-independent-columns.has-both-columns {
+    grid-template-columns: minmax(0, 1fr) clamp(240px, 28cqw, 330px);
+  }
+
+  .dashboard-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .memo-notes-panel.is-height-bounded {
+    flex: 1 1 0%;
+    overflow: hidden;
+  }
+
+  .dashboard-left-column {
+    container-type: inline-size;
+  }
+
+  .dashboard-primary-column.is-contained {
+    container-type: inline-size;
+  }
+
+  .dashboard-primary-column.is-height-synced {
+    height: var(--dashboard-right-top-height);
+  }
+
+  .dashboard-primary-column.has-agenda-and-memos {
+    min-height: calc(34.125rem + 0.75rem + (100cqw - 1rem) / 3 + 6.75rem);
+  }
+
+  .dashboard-primary-column.has-agenda-only {
+    min-height: 34.125rem;
+  }
+
+  .dashboard-primary-column.has-memos-only {
+    min-height: calc((100cqw - 1rem) / 3 + 6.75rem);
+  }
+
+  .dashboard-right-bottom.is-height-synced {
+    height: var(--dashboard-right-bottom-height);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dashboard-right-bottom.is-height-synced > section {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+.memo-note-card {
+  min-height: calc((100cqw - 1rem) / 3);
+}
+
+.memo-notes-panel.is-height-bounded .memo-note-card,
+.memo-notes-panel.is-height-bounded .memo-strip-track {
+  height: 100%;
+  max-height: 100%;
+}
+
+.memo-notes-panel.is-height-bounded .memo-strip-frame {
+  flex: 1 1 0%;
+}
+
+@container dashboard (min-width: 640px) {
+  .memo-notes-panel.is-content-sized {
+    width: 100%;
+    align-self: flex-start;
+  }
+
+  .memo-notes-panel.is-content-sized .memo-strip-frame {
+    height: calc((100cqw - 1rem) / 3 + 0.75rem);
+    flex: none;
+  }
+}
+
+.memo-position-scrollbar {
+  position: relative;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 9999px;
+  background: transparent;
+  opacity: 0.55;
+  touch-action: none;
+  user-select: none;
+  transition: opacity 140ms ease;
+}
+
+.memo-position-scrollbar.is-scrollable {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.memo-position-scrollbar:focus-visible {
+  outline: 2px solid rgba(98, 91, 197, 0.62);
+  outline-offset: 2px;
+}
+
+.memo-position-scrollbar-thumb {
+  position: absolute;
+  inset-block: 0;
+  border-radius: 9999px;
+  background: rgba(91, 98, 126, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  cursor: grab;
+  transition: background-color 140ms ease;
+}
+
+.memo-position-scrollbar.is-dragging,
+.memo-position-scrollbar.is-dragging .memo-position-scrollbar-thumb {
+  cursor: grabbing;
+}
+
+.memo-position-scrollbar.is-dragging .memo-position-scrollbar-thumb {
+  background: rgba(72, 79, 106, 0.9);
+}
+
+.memo-position-scrollbar.is-scrollable:hover .memo-position-scrollbar-thumb {
+  background: rgba(72, 79, 106, 0.82);
+}
+
+@container dashboard (min-width: 640px) {
+  .memo-strip-frame {
+    min-height: calc((100cqw - 1rem) / 3 + 0.75rem);
+  }
+}
+
+.memo-note-edit-textarea {
+  min-height: 150px;
+}
+
+.memo-rich-editor:empty::before {
+  content: attr(data-placeholder);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.memo-rich-editor img {
+  cursor: default;
+  user-select: none;
+}
+
+.memo-rich-editor em,
+.memo-rich-editor i,
+.memo-italic {
+  font-style: italic !important;
+  font-synthesis: style;
+  font-synthesis-style: auto;
+}
+
+.whiteboard-canvas {
+  --color-background: #fbfbfd;
+  font-family: var(--font-ui);
+}
+
+.desktop-app-root ::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+.desktop-app-root ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb)) {
+  --moki-assistant-scrollbar-thumb: rgba(142, 149, 168, 0.22);
+  --moki-assistant-scrollbar-thumb-hover: rgba(116, 123, 145, 0.38);
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb)) * {
+  scrollbar-color: var(--moki-assistant-scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb))
+  ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb))
+  ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb))
+  ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--moki-assistant-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+:is(.moki-assistant-page, .moki-assistant-floating:not(.moki-assistant-orb))
+  ::-webkit-scrollbar-thumb:hover {
+  background: var(--moki-assistant-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.shell-main-scroll {
+  scrollbar-color: rgba(142, 149, 168, 0.32) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.shell-main-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.shell-main-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shell-main-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(142, 149, 168, 0.28);
+  background-clip: padding-box;
+}
+
+.shell-main-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(116, 123, 145, 0.42);
+  background-clip: padding-box;
+}
+
+.shell-main-scroll-transient {
+  scrollbar-color: transparent transparent;
+}
+
+.shell-main-scroll-transient::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background-color 160ms ease;
+}
+
+.shell-main-scroll-transient.shell-main-scroll-active {
+  scrollbar-color: rgba(142, 149, 168, 0.32) transparent;
+}
+
+.shell-main-scroll-transient.shell-main-scroll-active::-webkit-scrollbar-thumb {
+  background: rgba(142, 149, 168, 0.28);
+  background-clip: padding-box;
+}
+
+.shell-main-scroll-transient.shell-main-scroll-active::-webkit-scrollbar-thumb:hover {
+  background: rgba(116, 123, 145, 0.42);
+  background-clip: padding-box;
+}
+
+.shell-main-scroll-hidden {
+  scrollbar-width: none;
+}
+
+.shell-main-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.moki-assistant-page-surface {
+  container-type: inline-size;
+  background-color: #fbfbfe;
+  background-image:
+    radial-gradient(
+      circle at 18% 20%,
+      rgba(137, 128, 224, 0.15),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 86% 25%,
+      rgba(100, 188, 198, 0.13),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 58% 82%,
+      rgba(224, 156, 204, 0.11),
+      transparent 34%
+    );
+  background-position:
+    0% 0%,
+    100% 8%,
+    52% 100%;
+  background-size:
+    132% 132%,
+    128% 128%,
+    138% 138%;
+  animation: moki-assistant-aurora 18s ease-in-out infinite alternate;
+}
+
+.moki-assistant-page-toolbar {
+  flex-wrap: nowrap;
+}
+
+.moki-assistant-page-identity {
+  flex: 1 1 auto;
+}
+
+.moki-assistant-page-actions {
+  --assistant-provider-width: clamp(4.5rem, 18cqw, 6.8rem);
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+}
+
+.moki-assistant-page-provider {
+  flex: 0 0 calc(var(--assistant-provider-width) + 2px);
+  min-width: 0;
+}
+
+.moki-assistant-page-provider select {
+  width: 100%;
+  min-width: 0;
+}
+
+.moki-assistant-page-model {
+  flex: 0 1 calc(12.5rem + 2px);
+  min-width: calc(var(--assistant-provider-width) + 2px);
+}
+
+@container (max-width: 680px) {
+  .moki-assistant-page-surface > header {
+    padding: 12px 16px;
+  }
+
+  .moki-assistant-page-toolbar,
+  .moki-assistant-page-identity {
+    gap: 8px;
+  }
+}
+
+@container (max-width: 420px) {
+  .moki-assistant-page-identity {
+    flex: 0 0 auto;
+  }
+
+  .moki-assistant-page-identity > div {
+    display: none;
+  }
+}
+
+@container (max-width: 380px) {
+  .moki-assistant-page-surface > header {
+    padding-inline: 8px;
+  }
+
+  .moki-assistant-page-actions {
+    --assistant-provider-width: 4rem;
+    gap: 6px;
+  }
+
+  .moki-assistant-page-identity:has(> button[aria-label="展开会话栏"]) > .moki-assistant-interaction {
+    display: none;
+  }
+}
+
+.moki-assistant-composer-dock {
+  background: linear-gradient(
+    to bottom,
+    rgba(251, 251, 254, 0),
+    rgba(251, 251, 254, 0.82) 42%,
+    rgba(251, 251, 254, 0.97) 72%,
+    #fbfbfe 100%
+  );
+}
+
+@media (max-height: 760px) {
+  .moki-assistant-message-pane {
+    padding-top: 0.75rem !important;
+  }
+
+  .moki-assistant-welcome {
+    min-height: max-content;
+    justify-content: center;
+    padding-bottom: 2rem;
+  }
+
+  .moki-assistant-welcome-title {
+    margin-top: 0.5rem;
+    font-size: 1.5rem;
+  }
+
+  .moki-assistant-welcome-description {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+  }
+
+  .moki-assistant-welcome-primary {
+    display: none;
+  }
+
+  .moki-assistant-welcome-card {
+    min-height: 6.5rem;
+    padding: 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .moki-assistant-welcome-card-title {
+    margin-top: 0.5rem;
+  }
+
+  .moki-assistant-welcome-card-description {
+    margin-top: 0.25rem;
+    line-height: 1rem;
+  }
+
+  .moki-assistant-welcome-secondary {
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .moki-assistant-welcome-secondary {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .moki-assistant-welcome-secondary > button {
+    min-width: 0;
+    flex: 1 1 0%;
+    justify-content: center;
+    gap: 0.25rem;
+    padding-inline: 0.5rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-height: 620px) {
+  .moki-assistant-message-pane {
+    padding-inline: 1.25rem !important;
+    padding-bottom: 6.5rem !important;
+  }
+
+  .moki-assistant-composer-dock {
+    margin-top: -6rem !important;
+    padding: 6rem 1.25rem 0.75rem !important;
+  }
+
+  .moki-assistant-composer-form {
+    min-height: 6.5rem !important;
+    padding: 0.625rem !important;
+  }
+
+  .moki-assistant-composer-editor {
+    min-height: 2.75rem !important;
+  }
+
+  .moki-assistant-welcome-mark {
+    display: grid;
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .moki-assistant-welcome {
+    min-height: 100%;
+    padding-bottom: 0;
+  }
+
+  .moki-assistant-welcome-primary {
+    margin-top: 0.5rem;
+  }
+
+  .moki-assistant-welcome-card {
+    min-height: 4.75rem;
+    padding: 0.625rem;
+  }
+
+  .moki-assistant-welcome-card-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .moki-assistant-welcome-card-title {
+    margin-top: 0.25rem;
+  }
+
+  .moki-assistant-welcome-card-description {
+    display: none;
+  }
+
+  .moki-assistant-welcome-secondary {
+    display: none;
+  }
+
+  .moki-assistant-activity-expand {
+    width: 2rem;
+    justify-content: center;
+    padding-inline: 0 !important;
+  }
+
+  .moki-assistant-activity-expand-label {
+    display: none;
+  }
+}
+
+@keyframes moki-assistant-aurora {
+  0% {
+    background-position:
+      0% 0%,
+      100% 8%,
+      52% 100%;
+  }
+
+  50% {
+    background-position:
+      12% 8%,
+      88% 18%,
+      62% 86%;
+  }
+
+  100% {
+    background-position:
+      3% 18%,
+      96% 2%,
+      44% 94%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moki-assistant-page-surface {
+    animation: none;
+  }
+}
+
+.agenda-scroll,
+.changes-scroll,
+.task-queue-scroll,
+.task-summary-scroll {
+  scrollbar-color: #c7cad8 transparent;
+  scrollbar-width: thin;
+}
+
+.agenda-scroll::-webkit-scrollbar,
+.changes-scroll::-webkit-scrollbar,
+.task-queue-scroll::-webkit-scrollbar,
+.task-summary-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.agenda-scroll::-webkit-scrollbar-track,
+.changes-scroll::-webkit-scrollbar-track,
+.task-queue-scroll::-webkit-scrollbar-track,
+.task-summary-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agenda-scroll::-webkit-scrollbar-thumb,
+.changes-scroll::-webkit-scrollbar-thumb,
+.task-queue-scroll::-webkit-scrollbar-thumb,
+.task-summary-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #c7cad8;
+  background-clip: padding-box;
+}
+
+.agenda-scroll::-webkit-scrollbar-thumb:hover,
+.changes-scroll::-webkit-scrollbar-thumb:hover,
+.task-queue-scroll::-webkit-scrollbar-thumb:hover,
+.task-summary-scroll::-webkit-scrollbar-thumb:hover {
+  background: #aeb3c5;
+  background-clip: padding-box;
+}
+#resource-library-page {
+  --library-resource-card-size: 11.25rem;
+}
+
+#resource-library-page .library-resource-grid article.group {
+  min-height: 0;
+  width: var(--library-resource-card-size);
+  height: var(--library-resource-card-size);
+  justify-self: start;
+}
+
+#resource-library-page .library-resource-grid {
+  grid-template-columns: repeat(auto-fill, var(--library-resource-card-size));
+  gap: 0.75rem;
+  align-content: start;
+  justify-content: start;
+}
+
+#resource-library-page .library-resource-list article.group {
+  aspect-ratio: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#resource-library-page > div.mb-3.flex > section {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  padding-block: 0;
+  overflow-y: hidden;
+  overscroll-behavior-y: auto;
+  scrollbar-width: none;
+}
+
+#resource-library-page > div.mb-3.flex > section::-webkit-scrollbar {
+  display: none;
+}
+
+#resource-library-page > div.mb-3.flex > label {
+  width: 18rem;
+  height: 2.5rem;
+}
+
+#resource-library-page > div.mb-3.flex > label > input {
+  height: 100%;
+  min-height: 0;
+}
+
+@media (min-width: 1280px) {
+  #resource-library-page > div.mb-3.flex > label {
+    width: 20rem;
+  }
+}
+
+@media (max-width: 639px) {
+  #resource-library-page > div.mb-3.flex > label {
+    width: 100%;
+  }
+}
+/* Keep the PowerPoint toolbar inside the preview height and let the filmstrip
+   measure only while its side-workspace tab is visible. */
+.moki-powerpoint-viewer {
+  display: flex;
+  flex-direction: column;
+}
+
+.moki-powerpoint-viewer > .rpv-toolbar {
+  flex: 0 0 48px;
+}
+
+.moki-powerpoint-viewer > .rpv-workspace {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.moki-powerpoint-viewer .rpv-filmstrip {
+  height: 100%;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+/* Application theme -------------------------------------------------------
+   Content such as documents, images, and the whiteboard canvas keeps its own
+   colors. The surrounding application chrome follows the selected theme. */
+html[data-color-scheme="light"] {
+  color-scheme: light;
+}
+
+html[data-color-scheme="dark"] {
+  color-scheme: dark;
+  --ink: #f1f3fa;
+  --page:
+    radial-gradient(circle at 8% 0%, #242a48 0, transparent 34%),
+    radial-gradient(circle at 100% 100%, #382431 0, transparent 30%), #10131f;
+  --shell: #161a28;
+  background: #10131f;
+}
+
+html[data-color-scheme="dark"] body {
+  background: #10131f;
+}
+
+/* Dark mode must keep the native window gutter transparent. Otherwise the
+   document background paints a rectangular layer around the rounded client
+   surface and clips the renderer-owned edge shadow. */
+html[data-color-scheme="dark"][data-desktop-shell="true"],
+html[data-color-scheme="dark"][data-desktop-shell="true"] body,
+html[data-color-scheme="dark"][data-moki-assistant-detached="true"],
+html[data-color-scheme="dark"][data-moki-assistant-detached="true"] body,
+html[data-color-scheme="dark"][data-moki-assistant-detached="true"] #root {
+  background: transparent;
+}
+
+html[data-color-scheme="dark"] .desktop-client-edge-shadow {
+  box-shadow:
+    0 0 0 1px rgba(104, 114, 148, 0.24),
+    0 2px 8px rgba(0, 0, 0, 0.34),
+    0 6px 12px -6px rgba(0, 0, 0, 0.48);
+}
+
+html[data-color-scheme="dark"] .desktop-client-edge-shadow-macos {
+  /* Do not paint a renderer shadow outside the transparent macOS surface.
+     The native compositor already owns the edge; a CSS shadow here can turn
+     the window's transparent corner into a hard right angle. */
+  box-shadow: none;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-white"],
+  [class~="bg-[#ffffff]"],
+  [class~="bg-[#fffefe]"],
+  [class~="bg-[#fafbfe]"],
+  [class~="bg-[#fafbfc]"],
+  [class~="bg-[#f8f9fc]"],
+  [class~="bg-[#f8f9fb]"],
+  [class~="bg-[#f7f8fc]"],
+  [class~="bg-[#f7f8fb]"]
+) {
+  background-color: #1c2131 !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-white/45"],
+  [class~="bg-white/55"],
+  [class~="bg-white/60"],
+  [class~="bg-white/65"],
+  [class~="bg-white/70"],
+  [class~="bg-white/75"],
+  [class~="bg-white/80"],
+  [class~="bg-white/86"],
+  [class~="bg-white/90"],
+  [class~="bg-white/92"],
+  [class~="bg-white/94"],
+  [class~="bg-white/95"],
+  [class~="bg-white/96"]
+) {
+  background-color: rgba(28, 33, 49, 0.94) !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-[#f3f4f8]"],
+  [class~="bg-[#f4f5f8]"],
+  [class~="bg-[#f4f5fb]"],
+  [class~="bg-[#f5f6f9]"],
+  [class~="bg-[#f5f6fa]"],
+  [class~="bg-[#f5f7fc]"],
+  [class~="bg-[#f6f7fa]"],
+  [class~="bg-[#edf0f6]"]
+) {
+  background-color: #242a3c !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-[#f0efff]"],
+  [class~="bg-[#eeecff]"],
+  [class~="bg-[#eeedff]"],
+  [class~="bg-[#ebeafd]"],
+  [class~="bg-[#f1efff]"],
+  [class~="bg-[#f1f0ff]"],
+  [class~="bg-[#f7f6ff]"],
+  [class~="bg-[#f5f4ff]"],
+  [class~="bg-[#f3f1ff]"],
+  [class~="bg-[#efedff]"]
+) {
+  background-color: #2b2948 !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-[#fff0f3]"],
+  [class~="bg-[#fff0f4]"]
+) {
+  background-color: #3a222d !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="bg-[#eaf7f2]"],
+  [class~="bg-[#f1fbf7]"]
+) {
+  background-color: #19352d !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="border-white"],
+  [class~="border-white/75"],
+  [class~="border-white/80"],
+  [class~="border-white/85"],
+  [class~="border-[#d7dae5]"],
+  [class~="border-[#d8dbe6]"],
+  [class~="border-[#dce0eb]"],
+  [class~="border-[#dcefe7]"],
+  [class~="border-[#dde1ec]"],
+  [class~="border-[#dedfea]"],
+  [class~="border-[#dfe2eb]"],
+  [class~="border-[#dfe2ec]"],
+  [class~="border-[#e0e2eb]"],
+  [class~="border-[#e1e3ec]"],
+  [class~="border-[#e1e4ef]"],
+  [class~="border-[#e2e4ed]"],
+  [class~="border-[#e3e6ef]"],
+  [class~="border-[#e4e6ef]"],
+  [class~="border-[#e5e7ef]"],
+  [class~="border-[#e5e8f2]"],
+  [class~="border-[#e8eaf1]"],
+  [class~="border-[#ebeef5]"],
+  [class~="border-[#eceef4]"],
+  [class~="border-[#edf0f6]"]
+) {
+  border-color: #3a4157 !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="text-[#171b2c]"],
+  [class~="text-[#20232d]"],
+  [class~="text-[#242838]"],
+  [class~="text-[#242a40]"],
+  [class~="text-[#252a3e]"],
+  [class~="text-[#292c41]"],
+  [class~="text-[#30364d]"],
+  [class~="text-[#33384c]"],
+  [class~="text-[#34394c]"],
+  [class~="text-[#34394e]"]
+) {
+  color: #f1f3fa !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="text-[#505667]"],
+  [class~="text-[#555b70]"],
+  [class~="text-[#555c70]"],
+  [class~="text-[#565c72]"],
+  [class~="text-[#586075]"],
+  [class~="text-[#5f6577]"],
+  [class~="text-[#5f6578]"],
+  [class~="text-[#62687a]"],
+  [class~="text-[#62687c]"],
+  [class~="text-[#697083]"],
+  [class~="text-[#6f7488]"],
+  [class~="text-[#6f7689]"],
+  [class~="text-[#73798b]"],
+  [class~="text-[#73798c]"],
+  [class~="text-[#747988]"],
+  [class~="text-[#777d8f]"],
+  [class~="text-[#777d90]"],
+  [class~="text-[#777d91]"]
+) {
+  color: #c4cada !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="text-[#858b9c]"],
+  [class~="text-[#858b9d]"],
+  [class~="text-[#858b9e]"],
+  [class~="text-[#8990a3]"],
+  [class~="text-[#8a90a2]"],
+  [class~="text-[#8f95a7]"],
+  [class~="text-[#8f95a8]"],
+  [class~="text-[#9297a7]"],
+  [class~="text-[#969bad]"],
+  [class~="text-[#999eae]"],
+  [class~="text-[#9ba0b1]"],
+  [class~="text-[#a0a5b5]"]
+) {
+  color: #98a1b7 !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="text-[#625bc5]"],
+  [class~="text-[#655fc8]"],
+  [class~="text-[#5f59bd]"],
+  [class~="text-[#554eae]"]
+) {
+  color: #aaa4ff !important;
+}
+
+html[data-color-scheme="dark"] #root :is(
+  [class~="text-[#b33c63]"],
+  [class~="text-[#b54863]"],
+  [class~="text-[#bd4568]"],
+  [class~="text-[#bd4668]"]
+) {
+  color: #ff9ab7 !important;
+}
+
+html[data-color-scheme="dark"] #root :is(input, textarea, select) {
+  color: #eef0f8;
+  caret-color: #aaa4ff;
+}
+
+html[data-color-scheme="dark"] #root :is(input, textarea)::placeholder {
+  color: #788197;
+}
+
+html[data-color-scheme="dark"] #root :is(button, input, textarea, select) {
+  accent-color: #8f87ef;
+}
+
+html[data-color-scheme="dark"] #root ::selection {
+  color: #ffffff;
+  background: rgba(117, 110, 210, 0.72);
+}
+
+html[data-color-scheme="dark"] #root :is(.native-whiteboard-canvas, img, video, iframe, canvas) {
+  color-scheme: light;
+}
+
+html[data-color-scheme="dark"] #root :is(.shell-main-scroll, .changes-scroll, [class*="overflow-y-auto"]) {
+  scrollbar-color: #515970 transparent;
+}
