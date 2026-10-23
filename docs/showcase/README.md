@@ -64,6 +64,16 @@ The demo places six reference assets on the canvas through MCP and organizes the
 
 [![Agent 素材整理 / Agent asset collection and organization](07-agent-materials.png)](07-agent-materials.png)
 
+## 编组收起为虚拟文件夹 分组管理整洁有序 / Keep Groups Tidy with Virtual Folders
+
+把相关图片、文件、便签和其他画布内容编为一组，再通过“收起为资料夹”折叠成一个虚拟文件夹。暂时不用的内容收起来，需要时再展开，让画布清爽、分组清晰，创作井然有序。
+
+Group related images, files, notes, and other canvas content, then collapse the group into a virtual folder using “收起为资料夹” (Collapse to folder). Tuck away content you are not using and expand it when needed to keep the canvas tidy and organized.
+
+操作顺序：多选内容 → 编组 → 右键“收起为资料夹”；需要时选择“展开资料夹”。这是当前页面内的内容整理，与上面的页面分组不同；虚拟文件夹是画布对象，不是磁盘文件夹。
+
+Workflow: select multiple items → group them → choose “收起为资料夹” from the context menu. Choose “展开资料夹” (Expand folder) to show the contents again. This organizes content within a page, separately from page groups; a virtual folder is a canvas object, not a folder on disk.
+
 ## 演示说明 / Demo Notes
 
 - 截图来自隔离的内存演示数据库，不包含用户真实白板。视频播放组件与分类图标包含发布截图表现增强。

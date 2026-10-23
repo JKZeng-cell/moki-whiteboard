@@ -37,6 +37,7 @@ MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的
 - 无限画布：连续无级缩放、平移、适应内容、缩略图导航与全屏。
 - 内容工具：便签、文本、六类图形、四种箭头、四档画笔、贝塞尔钢笔路径、9 类思维导图模板、图片 / GIF / 视频、文件和链接。
 - 编辑交互：多选、旋转、角点缩放、边缘拉伸、编组 / 资料夹、对齐 / 分布、剪贴板、撤销 / 重做和就地文本编辑。
+- 分组整理：将相关内容编组，收起为画布中的虚拟文件夹（资料夹）；需要时再展开，分组管理整洁有序。
 - 页面系统：多页面、页面分组、跨页面内容检索与定位、页面历史版本和恢复。
 - 本地资料：文件 / 文件夹插入、素材列表、预览与重命名，可自定义素材缓存路径。
 - 外观：浅色、深色和跟随系统。
@@ -188,6 +189,7 @@ MOKI Whiteboard is a standalone React / Electron application evolved from the in
 - Infinite canvas: continuous zoom, pan, fit to content, minimap navigation, and fullscreen.
 - Creation tools: sticky notes, text, six shape types, four arrow styles, four brush sizes, Bézier pen paths, nine mind-map templates, images / GIFs / videos, files, and links.
 - Editing: multi-select, rotation, corner scaling, edge resizing, groups / folders, alignment / distribution, clipboard, undo / redo, and inline text editing.
+- Group organization: group related content and collapse it into a virtual folder on the canvas. Expand it when needed to keep your workspace tidy and organized.
 - Pages: multiple pages, page groups, cross-page content search and navigation, and per-page version history and restoration.
 - Local assets: insert files / folders, locate and preview assets, rename them, and configure the asset-cache directory.
 - Appearance: light, dark, or follow the system theme.
