@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>MOKI 白板 · 开源发布图</title>
+<style>
+:root{--ink:#1b2033;--muted:#6b7184;--purple:#655bc6;--line:#e2e2ed;--paper:#faf9fc}
+*{box-sizing:border-box}html,body{margin:0;font-family:"Microsoft YaHei UI","Microsoft YaHei",Arial,sans-serif;color:var(--ink)}
+body{background:#e8e8ed;display:grid;grid-template-columns:repeat(3,1080px);gap:24px;padding:24px}
+.card{position:relative;width:1080px;height:1440px;background:linear-gradient(160deg,#fdfcf9 15%,#f8f7fc 100%);overflow:hidden}
+.brand{position:absolute;left:64px;right:64px;top:60px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.identity{display:flex;gap:17px;align-items:center}.identity img{width:64px;height:64px;border-radius:17px;filter:drop-shadow(0 8px 9px #5b577928)}
+.identity b{font-size:24px;font-weight:900}.identity small{display:block;margin-top:7px;color:var(--purple);letter-spacing:3px;font-size:10px;font-weight:800}
+.number{font:700 14px Arial;letter-spacing:3px;color:#9292a3}
+.hero{position:absolute;left:64px;right:64px;top:174px}.eyebrow{font:800 14px Arial;letter-spacing:3px;color:var(--purple)}
+h1{font-size:68px;line-height:1.1;letter-spacing:-3px;margin:22px 0 8px;padding-bottom:12px;font-weight:900}.lead{font-size:24px;line-height:1.65;color:var(--muted);margin:0;max-width:950px}
+.cover h1{font-size:89px;line-height:1.04;margin-top:25px}.cover .hero{top:190px}.cover .lead{font-size:27px}
+.cover-note{font-size:17px;color:var(--purple);font-weight:700;margin-top:23px}.cover-note::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#68b9a9;margin-right:12px}
+.detail{position:absolute;left:64px;right:64px;top:476px;height:118px;display:grid;gap:14px}
+.cover .detail{top:555px;height:44px;grid-template-columns:repeat(3,1fr)}
+.pill{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:16px;font-weight:700;color:#504a80}
+.five{grid-template-columns:repeat(5,1fr)}.tile{display:flex;flex-direction:column;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:15px;padding:17px;background:#fff;min-width:0}
+.tile strong{font-size:18px}.tile small{font-size:12px;color:#8b8c9d}.tile .symbol{font-size:25px;line-height:25px;color:var(--purple);margin-bottom:4px;font-family:Arial}
+.four{grid-template-columns:repeat(4,1fr)}.step{padding:22px 18px;border-top:2px solid #c9c3ed;background:#fff;border-radius:0 0 12px 12px}.step .order{color:#aaa5c9;font:800 12px Arial;letter-spacing:2px}.step b{display:block;font-size:19px;margin-top:10px}.step small{display:block;margin-top:6px;font-size:12px;color:var(--muted)}
+.step.active{border-top-color:var(--purple);background:#eeebfc}.step.active .order{color:var(--purple)}
+.three{grid-template-columns:repeat(3,1fr)}.page-group{border:1px solid var(--line);border-radius:15px;padding:19px 20px;background:#fff}.page-group small{font-size:11px;letter-spacing:2px;color:var(--purple)}.page-group b{display:block;font-size:20px;margin-top:9px}.page-group span{display:block;font-size:12px;color:var(--muted);margin-top:7px}
+.asset-demo{grid-template-columns:1fr 1fr 1fr}.asset-search{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px}.query{border:1px solid #d9d5ef;border-radius:9px;font-size:14px;color:#746baf;padding:8px 11px}.asset-search small{display:block;margin-top:12px;font-size:12px;color:var(--muted)}
+.asset-preview{background:#fff;border:1px solid var(--line);border-radius:15px;display:flex;align-items:center;padding:8px 13px;gap:14px}.asset-preview img{display:block;width:142px;height:auto;flex-shrink:0}.asset-preview b{font-size:14px;line-height:1.5}.asset-preview small{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.asset-caption{padding:12px 12px 12px 20px;border-left:2px solid #cec9e5;display:flex;flex-direction:column;justify-content:center;gap:10px}.asset-caption b{font-size:18px}.asset-caption small{font-size:12px;color:var(--muted)}
+.mcp-detail .tile{gap:8px}.mcp-detail .tile strong{font-size:17px}.mcp-detail .tile small{line-height:1.5;font-size:12px}
+.screen{position:absolute;left:60px;right:60px;top:620px;border:1px solid #dedde8;border-radius:18px;background:#fff;padding:8px;box-shadow:0 18px 44px #34304f0e,0 4px 12px #34304f08}
+.window-bar{height:30px;display:flex;align-items:center;gap:5px;padding:0 7px 8px}.window-bar i{width:5px;height:5px;border-radius:50%;background:#c6c1d6}.window-bar span{margin-left:10px;font-size:10px;color:#8d8a9e;letter-spacing:1.5px;font-weight:700}
+.demo{display:block;width:100%;height:auto;object-fit:contain;border:0}
+.footer{position:absolute;left:64px;right:64px;top:1352px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:23px;color:#9393a3;font-size:13px}
+.footer strong{color:#57507e;font-size:14px;letter-spacing:.15px;font-weight:700}
+</style></head><body>
+<section class="card cover" data-card="1">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">01 / 07</span></header>
+ <div class="hero"><div class="eyebrow">OPEN SOURCE · MIT LICENSE</div><h1>MOKI 白板<br>正式开源</h1><p class="lead">一块能被 Agent 直接操作的自由桌面</p><div class="cover-note">本地优先 · 无限画布 · Agent 协同</div></div>
+ <div class="detail"><div class="pill">多媒体自由置入</div><div class="pill">思维导图与分页</div><div class="pill">MCP 接入 Agent</div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>WORKSPACE / 创意项目总览 · 从灵感到发布</span></div><img class="demo" src="sources/demo-cover.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="2">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">02 / 07</span></header>
+ <div class="hero"><div class="eyebrow">MULTIMEDIA DESKTOP</div><h1>不止是画布<br>是你的自由桌面</h1><p class="lead">图片、视频、网页、文档与应用程序，<br>都能在同一张画布里自由组织。</p></div>
+ <div class="detail five"><div class="tile"><span class="symbol">▧</span><strong>图片</strong><small>主视觉 / 灵感参考</small></div><div class="tile"><span class="symbol">▷</span><strong>视频</strong><small>产品演示 / 动态素材</small></div><div class="tile"><span class="symbol">◎</span><strong>网页</strong><small>链接收集 / 直接预览</small></div><div class="tile"><span class="symbol">▤</span><strong>文档</strong><small>项目 Brief / 资料</small></div><div class="tile"><span class="symbol">⊞</span><strong>应用程序</strong><small>常用程序文件卡片</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 图片 + 视频播放器 + 网页 + 文档 + 应用程序</span></div><img class="demo" src="sources/demo-multimedia.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="3">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">03 / 07</span></header>
+ <div class="hero"><div class="eyebrow">AGENT-NATIVE MIND MAP</div><h1>让 AI 加速<br>你的思考落地</h1><p class="lead">支持 Agent 调用的思维导图，<br>把模糊想法拆成清晰、可编辑的行动结构。</p></div>
+ <div class="detail four"><div class="step"><span class="order">01 / IDEA</span><b>说出目标</b><small>“帮我规划一次新品发布”</small></div><div class="step active"><span class="order">02 / AGENT</span><b>拆解思路</b><small>研究、策划、制作、复盘</small></div><div class="step"><span class="order">03 / MAP</span><b>生成导图</b><small>13 个节点，层级清晰</small></div><div class="step"><span class="order">04 / EDIT</span><b>继续共创</b><small>补充分支、重排与细化</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 新品发布计划 · 4 个方向 · 13 个节点</span></div><img class="demo" src="sources/demo-mindmap.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="4">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">04 / 07</span></header>
+ <div class="hero"><div class="eyebrow">PAGES & GROUPS</div><h1>复杂项目<br>也能清晰翻页</h1><p class="lead">页面分组、拖拽排序、快速切换，<br>把一个项目的全部上下文放在一起。</p></div>
+ <div class="detail three"><div class="page-group"><small>01 / RESEARCH</small><b>研究与灵感</b><span>用户洞察 / 空间参考 / 字体研究</span></div><div class="page-group"><small>02 / CREATE</small><b>方案与交付</b><span>官网线框 / 主视觉方案 / 发布清单</span></div><div class="page-group"><small>YOUR WORKFLOW</small><b>分组 + 分页</b><span>按创作阶段组织，自由增删改查</span></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 2 个分组 · 6 个页面 · 完整页面菜单</span></div><img class="demo" src="sources/demo-pages.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="5">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">05 / 07</span></header>
+ <div class="hero"><div class="eyebrow">ASSET MANAGEMENT</div><h1>再多内容<br>也能随取随用</h1><p class="lead">快速定位、快速预览，<br>再多的内容也能随取随用。</p></div>
+ <div class="detail asset-demo"><div class="asset-search"><div class="query">⌕　空间参考</div><small>按名称搜索 → 点击定位到画布</small></div><div class="asset-preview"><img src="sources/space-reference.png"><div><b>空间参考.png</b><small>一键查看大图</small></div></div><div class="asset-caption"><b>搜索 · 定位 · 预览</b><small>当前页 9 项素材，随时找到所需内容</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 9 项素材 · 完整内容列表 · 预览与打开入口</span></div><img class="demo" src="sources/demo-assets.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="6">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">06 / 07</span></header>
+ <div class="hero"><div class="eyebrow">MCP · AGENT COLLABORATION</div><h1>让 Agent<br>协助你的创意</h1><p class="lead">素材收集、内容整理、思维导图、图片创作，<br>让 MCP 改变传统画板交互。</p></div>
+ <div class="detail four mcp-detail"><div class="tile"><strong>素材收集</strong><small>收集网页与图片<br>直接放入创作画布</small></div><div class="tile"><strong>内容整理</strong><small>分类、移动与对齐<br>用分页组织项目</small></div><div class="tile"><strong>思维导图</strong><small>把目标拆解成节点<br>继续补充和调整</small></div><div class="tile"><strong>图片创作</strong><small>将 Agent 生成结果<br>带回同一张画布</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 标准 MCP · stdio + Streamable HTTP</span></div><img class="demo" src="sources/demo-mcp.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<section class="card" data-card="7">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">07 / 07</span></header>
+ <div class="hero"><div class="eyebrow">AGENT · COLLECT & ORGANIZE</div><h1>让 Agent 找素材<br>置入画布 有序整理</h1><p class="lead">告诉 Agent 你想找什么，帮你搜集参考、<br>置入画布，再按主题分类整理。</p></div>
+ <div class="detail four"><div class="step"><span class="order">01 / BRIEF</span><b>描述需求</b><small>“找一组自然风品牌参考”</small></div><div class="step active"><span class="order">02 / COLLECT</span><b>Agent 找素材</b><small>筛选与主题相关的内容</small></div><div class="step"><span class="order">03 / CANVAS</span><b>置入画布</b><small>通过 MCP 导入素材</small></div><div class="step"><span class="order">04 / ORGANIZE</span><b>分类整理</b><small>空间、配色、版式一目了然</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / Agent 置入 6 项参考 · 3 个方向 · MCP 调用结果</span></div><img class="demo" src="sources/demo-collection.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<script>const card=Number(new URLSearchParams(location.search).get('card'));if(card){document.querySelectorAll('.card').forEach(el=>el.style.display=Number(el.dataset.card)===card?'block':'none');document.body.style.cssText='display:block;padding:0;margin:0;background:#fff;width:1080px;height:1440px;overflow:hidden';}</script>
+</body></html>

@@ -1240,9 +1240,10 @@ async function getAssistantWhiteboardUpdate(
   return value;
 }
 
-export function WhiteboardPage({ embedded = false, active = true, initialPageId, onActivePageChange, onCheckpointReady }: {
+export function WhiteboardPage({ embedded = false, active = true, boardTitle, initialPageId, onActivePageChange, onCheckpointReady }: {
   embedded?: boolean;
   active?: boolean;
+  boardTitle?: string | undefined;
   initialPageId?: string | undefined;
   onActivePageChange?: ((page: WhiteboardPageInfo) => void) | undefined;
   onCheckpointReady?: (checkpoint: (() => Promise<void>) | undefined) => void;
@@ -2968,7 +2969,7 @@ export function WhiteboardPage({ embedded = false, active = true, initialPageId,
       } : undefined} className={`flex h-full w-full min-w-0 min-h-0 flex-col outline-none ${embedded ? "p-2" : ""}`}>
         <WorkbenchPageHeader
           eyebrow="MOKI Canvas"
-          title="无限白板"
+          title={<span className="block max-w-[min(60vw,36rem)] truncate" title={boardTitle || "无限白板"}>{boardTitle || "无限白板"}</span>}
           description="便签、文本、图片、链接与涂鸦均保存在当前电脑"
           actionsClassName="gap-2"
           actions={(

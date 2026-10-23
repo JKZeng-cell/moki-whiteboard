@@ -36,7 +36,7 @@ export function App(){
  const config=JSON.stringify(http?{mcpServers:{'moki-whiteboard':{url:location.origin+'/mcp'}}}:{mcpServers:{'moki-whiteboard':{command:mcpCommand,args:[entry.replaceAll('\\','/')],env:{...mcpEnv,MOKI_WHITEBOARD_DATA:path.replaceAll('\\','/')}}}},null,2);
  const copy=async(value:string)=>{try{await navigator.clipboard.writeText(value);setCopied(true);setTimeout(()=>setCopied(false),1600);}catch(e){setError('复制失败：'+String(e));}};
  return <>
- {id?<NativeControlsContext.Provider value={{back:()=>void back(),settings:()=>{setSettingsTab('appearance');setSettings(true);}}}><WhiteboardPage key={id} onCheckpointReady={value=>{checkpoint.current=value;}}/></NativeControlsContext.Provider>:
+ {id?<NativeControlsContext.Provider value={{back:()=>void back(),settings:()=>{setSettingsTab('appearance');setSettings(true);}}}><WhiteboardPage key={id} boardTitle={items.find(item=>item.id===id)?.title ?? '白板名称加载中…'} onCheckpointReady={value=>{checkpoint.current=value;}}/></NativeControlsContext.Provider>:
  <BoardManager items={items} open={next=>navigate(next)} refresh={refresh} controls={<>{whiteboardFiles.controls}<button className="native-app-control" aria-label="设置" title="设置" onClick={()=>{setSettingsTab('appearance');setSettings(true);}}><Settings size={18}/></button></>}/>}
  {whiteboardFiles.busy?<div className="whiteboard-file-progress" role="status">正在打开白板文件…</div>:null}
  {error||syncError?<div className="native-app-error" role="alert">{error||syncError}<button aria-label="关闭错误" onClick={()=>{setError('');setSyncError('');}}><X size={15}/></button></div>:null}

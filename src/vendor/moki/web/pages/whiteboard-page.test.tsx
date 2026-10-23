@@ -394,6 +394,25 @@ afterEach(() => {
 });
 
 describe("WhiteboardPage", () => {
+  it("shows the board name in the heading rather than the current page name", async () => {
+    const { rerender } = render(<WhiteboardPage boardTitle="动画分镜参考" />);
+    await waitFor(() => expect(api.getWhiteboard).toHaveBeenCalled());
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("动画分镜参考");
+    expect(screen.queryByRole("heading", { name: "无限白板" })).toBeNull();
+    const longTitle = "这是白板名称而不是页面名称".repeat(10);
+    rerender(<WhiteboardPage boardTitle={longTitle} />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.textContent).toBe(longTitle);
+    expect(heading.querySelector("span")).toHaveAttribute("title", longTitle);
+    expect(heading.querySelector("span")).toHaveClass("truncate");
+  });
+
+  it("keeps a fallback heading when no board name is supplied", async () => {
+    render(<WhiteboardPage />);
+    await waitFor(() => expect(api.getWhiteboard).toHaveBeenCalled());
+    expect(screen.getByRole("heading", { level: 1, name: "无限白板" })).toBeInTheDocument();
+  });
+
   it("opens direct local file or folder choices without listing library history", async () => {
     const common = {
       parentId: null,
