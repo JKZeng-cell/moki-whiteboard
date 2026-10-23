@@ -29,7 +29,7 @@ MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的
 
 ## 图文介绍
 
-[查看七张发布介绍图与中英双语预览页](docs/showcase/README.md)，了解多媒体置入、思维导图、分页管理、素材管理与 MCP Agent 协作。
+[查看八张发布介绍图与中英双语预览页](docs/showcase/README.md)，了解多媒体置入、思维导图、分页管理、素材管理、虚拟文件夹与 MCP Agent 协作。
 
 ## 主要能力
 
@@ -181,7 +181,7 @@ MOKI Whiteboard is a standalone React / Electron application evolved from the in
 
 ### Visual Showcase
 
-[Explore all seven launch images and the bilingual preview page](docs/showcase/README.md): multimedia, mind maps, pages, asset management, and MCP agent collaboration.
+[Explore all eight launch images and the bilingual preview page](docs/showcase/README.md): multimedia, mind maps, pages, asset management, virtual folders, and MCP agent collaboration.
 
 ### Features
 

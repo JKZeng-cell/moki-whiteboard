@@ -2,11 +2,11 @@
 
 [项目首页 / Project home](../../README.md) · [发布文案 / Chinese social copy](publish-copy.zh-CN.md) · [HTML 排版源文件 / HTML composition](release-cards.html)
 
-七张 3:4 静态发布图，每张 1080 × 1440。点击图片可查看原图；以下页面可直接在 GitHub 浏览。
+八张 3:4 静态发布图，每张 1080 × 1440。点击图片可查看原图；以下页面可直接在 GitHub 浏览。
 
-Seven static 3:4 launch images, each 1080 × 1440. Click an image to open the original. This page is viewable directly on GitHub.
+Eight static 3:4 launch images, each 1080 × 1440. Click an image to open the original. This page is viewable directly on GitHub.
 
-![七图总览 / All seven images](00-preview.png)
+![八图总览 / All eight images](00-preview.png)
 
 ## 01 · 开源自由桌面 / An Open-Source Creative Desktop
 
@@ -64,11 +64,13 @@ The demo places six reference assets on the canvas through MCP and organizes the
 
 [![Agent 素材整理 / Agent asset collection and organization](07-agent-materials.png)](07-agent-materials.png)
 
-## 编组收起为虚拟文件夹 分组管理整洁有序 / Keep Groups Tidy with Virtual Folders
+## 08 · 编组收起为虚拟文件夹 分组管理整洁有序 / Keep Groups Tidy with Virtual Folders
 
 把相关图片、文件、便签和其他画布内容编为一组，再通过“收起为资料夹”折叠成一个虚拟文件夹。暂时不用的内容收起来，需要时再展开，让画布清爽、分组清晰，创作井然有序。
 
 Group related images, files, notes, and other canvas content, then collapse the group into a virtual folder using “收起为资料夹” (Collapse to folder). Tuck away content you are not using and expand it when needed to keep the canvas tidy and organized.
+
+[![内容编组与虚拟文件夹 / Expanded groups and collapsed virtual folders](08-virtual-folders.png)](08-virtual-folders.png)
 
 操作顺序：多选内容 → 编组 → 右键“收起为资料夹”；需要时选择“展开资料夹”。这是当前页面内的内容整理，与上面的页面分组不同；虚拟文件夹是画布对象，不是磁盘文件夹。
 
@@ -78,12 +80,12 @@ Workflow: select multiple items → group them → choose “收起为资料夹�
 
 - 截图来自隔离的内存演示数据库，不包含用户真实白板。视频播放组件与分类图标包含发布截图表现增强。
 - 找素材示例使用本地演示参考库；网页搜索、图片生成等能力由连接的 Agent 及其工具提供，并非白板内置的搜索引擎或生成模型。
-- 原始排版源文件为 `release-cards.html`，可在本地浏览器打开；添加 `?card=1` 到 `?card=7` 可查看单张。GitHub 文件浏览器不会直接运行 HTML。
+- 原始排版源文件为 `release-cards.html`，可在本地浏览器打开；添加 `?card=1` 到 `?card=8` 可查看单张。GitHub 文件浏览器不会直接运行 HTML。
 - 本目录仅包含公开展示材料，不含数据库、素材缓存、认证配置或安装包。
 
 - Screenshots use an isolated in-memory demo database, not real user boards. Video controls and file-type icons include presentation-only enhancements.
 - The collection example uses a local demo reference library. Web search and image generation depend on the connected agent and its tools; they are not built-in search engines or generative models.
-- Open `release-cards.html` in a local browser to view the original composition. Add `?card=1` through `?card=7` for an individual image. GitHub's file browser does not execute HTML.
+- Open `release-cards.html` in a local browser to view the original composition. Add `?card=1` through `?card=8` for an individual image. GitHub's file browser does not execute HTML.
 - This directory contains public showcase materials only: no databases, asset caches, credentials, or installers.
 
 在 GitHub 搜索 / Search GitHub: `JKZeng-cell/moki-whiteboard`

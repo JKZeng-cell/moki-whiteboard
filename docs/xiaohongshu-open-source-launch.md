@@ -1,6 +1,6 @@
 # MOKI 白板小红书开源发布包
 
-> 最新七图介绍与图文预览见 [showcase/README.md](showcase/README.md)，最终带表情发布文案见 [showcase/publish-copy.zh-CN.md](showcase/publish-copy.zh-CN.md)。以下保留首版策划与历史验证基线，不作为最新发布图的清单。
+> 最新八图介绍与图文预览见 [showcase/README.md](showcase/README.md)，最终带表情发布文案见 [showcase/publish-copy.zh-CN.md](showcase/publish-copy.zh-CN.md)。以下保留首版策划与历史验证基线，不作为最新发布图的清单。
 
 ## 发布定位
 

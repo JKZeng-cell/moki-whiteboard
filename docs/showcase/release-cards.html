@@ -80,5 +80,12 @@ h1{font-size:68px;line-height:1.1;letter-spacing:-3px;margin:22px 0 8px;padding-
  <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / Agent 置入 6 项参考 · 3 个方向 · MCP 调用结果</span></div><img class="demo" src="sources/demo-collection.png"></div>
  <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
 </section>
-<script>const card=Number(new URLSearchParams(location.search).get('card'));if(card){document.querySelectorAll('.card').forEach(el=>el.style.display=Number(el.dataset.card)===card?'block':'none');document.body.style.cssText='display:block;padding:0;margin:0;background:#fff;width:1080px;height:1440px;overflow:hidden';}</script>
+<section class="card" data-card="8">
+ <header class="brand"><div class="identity"><img src="moki-whiteboard-icon.png"><div><b>MOKI 白板</b><small>MOKI CANVAS</small></div></div><span class="number">08 / 08</span></header>
+ <div class="hero"><div class="eyebrow">GROUPS · VIRTUAL FOLDERS</div><h1>编组收起为虚拟文件夹<br>分组管理整洁有序</h1><p class="lead">把相关图片、文件和便签收在一起，<br>暂时收起，按需展开，让创作空间清爽有序。</p></div>
+ <div class="detail three"><div class="step"><span class="order">01 / GROUP</span><b>相关内容编组</b><small>素材与想法放在一起</small></div><div class="step active"><span class="order">02 / COLLAPSE</span><b>收起为虚拟文件夹</b><small>画布更清爽，主题更清晰</small></div><div class="step"><span class="order">03 / EXPAND</span><b>按需展开继续创作</b><small>原有内容仍可编辑</small></div></div>
+ <div class="screen"><div class="window-bar"><i></i><i></i><i></i><span>LIVE DEMO / 内容展开 → 收起为资料夹 · 3 个主题分组</span></div><img class="demo" src="sources/demo-folders.png"></div>
+ <footer class="footer"><span>Power by JKZeng</span><strong>在 GitHub 搜索 JKZeng-cell/moki-whiteboard</strong></footer>
+</section>
+<script>document.querySelectorAll('.number').forEach((el,i)=>el.textContent=String(i+1).padStart(2,'0')+' / 08');const card=Number(new URLSearchParams(location.search).get('card'));if(card){document.querySelectorAll('.card').forEach(el=>el.style.display=Number(el.dataset.card)===card?'block':'none');document.body.style.cssText='display:block;padding:0;margin:0;background:#fff;width:1080px;height:1440px;overflow:hidden';}</script>
 </body></html>
