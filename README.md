@@ -16,6 +16,16 @@ A local-first, open-source infinite whiteboard and MCP server for AI coding agen
 
 Use MOKI when an agent needs to organize references, edit a mind map, or manipulate a local visual workspace. Models, web search, and image generation are provided by your connected agent, not bundled services.
 
+## Windows 下载 / Downloads
+
+Windows x64 · **v0.1.7** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7)
+
+- [安装程序 / Installer (.exe)](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/MOKI-Whiteboard-Setup-0.1.7-x64.exe)
+- [免安装包 / Portable ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/MOKI-Whiteboard-0.1.7-Windows-x64.zip)
+- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/SHA256SUMS-0.1.7.txt)
+
+安装包尚未代码签名，Windows 可能显示未知发布者或 SmartScreen 提示。请核对下载文件的 SHA-256。 / Packages are not code-signed; Windows may show an unknown-publisher or SmartScreen warning. Verify the SHA-256 checksum before running.
+
 <a id="zh-cn"></a>
 
 MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的 React / Electron 应用、本地 SQLite 存储和标准 MCP Server。你可以自己编辑画布，也可以让支持 MCP 的 Agent 读取、创建、修改、对齐和导出白板内容。

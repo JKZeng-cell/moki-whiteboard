@@ -7,7 +7,7 @@
 - GitHub：19 Stars、4 Forks；本次检查时仓库为公开状态，最近三次 CI 成功。
 - About 原先只有中文，Topics 原先为 6 个；已补充英文描述和 7 个相关主题。
 - README 已有中英文与八张介绍图；本次增加 Agent 快速接入入口、可运行的隔离示例和 `llms.txt`。
-- GitHub Release 列表当前为空。源码内有 Windows 打包脚本，但本地安装包不等于已发布的 GitHub Release。
+- 调研开始时 GitHub Release 列表为空；随后已发布 [Windows v0.1.7 安装包、免安装 ZIP 和校验文件](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7)。本地安装包与 GitHub Release 是不同的交付步骤。
 - `package.json` 保留 `private: true`，没有据此宣称可通过 `npx moki-whiteboard` 安装。
 
 ## 发现策略：让用户找得到，也能真的用起来
@@ -26,7 +26,7 @@ GitHub 默认仓库搜索主要匹配名称、描述和 Topics；README 内容�
 
 | 优先级 | 行动 | 完成标准 | 当前边界 |
 | --- | --- | --- | --- |
-| P0 | 发布可直接下载的 GitHub Release | 安装包、免安装 ZIP、SHA-256、签名说明、清楚的更新记录 | 当前无 Release；需另行确认发布，复验待上传产物 |
+| P0 | 发布可直接下载的 GitHub Release | 安装包、免安装 ZIP、SHA-256、签名说明、清楚的更新记录 | 已发布 v0.1.7；后续版本继续复验产物后发布 |
 | P0 | 用一个实际任务解释差异化 | 一句话需求 → Agent 操作 → 可继续编辑的导图 / 虚拟文件夹；配准确配置和截图 | 已有八图，可复用，不虚构聊天内置 AI |
 | P1 | 提交合适的 MCP 社区目录 | 符合目录格式、准确类别、可复现安装说明，由维护者审核 | 只准备建议，不自动创建第三方 PR |
 | P1 | 准备官方 MCP Registry 分发 | 先有真实可安装产物、所有权验证和准确的服务器元数据 | 不能直接把本机 `127.0.0.1` 填成公共远程服务；npm 包仍为 private |

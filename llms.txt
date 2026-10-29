@@ -11,6 +11,7 @@ Use `whiteboard_list`, then `whiteboard_inspect`; use explicit returned IDs and 
 - [Agent guide](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/docs/agent-guide.md): Setup, transports, exact tool names, safe editing, and example requests.
 - [Bilingual README](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/README.md): Features, development, privacy, and Windows packaging.
 - [Visual showcase](https://github.com/JKZeng-cell/moki-whiteboard/tree/main/docs/showcase): Eight feature images and explanations.
+- [Windows downloads](https://github.com/JKZeng-cell/moki-whiteboard/releases/latest): x64 installer, portable ZIP, SHA-256 checksums, and signing caveats.
 - [MCP implementation](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/src/mcp/create-server.ts): Authoritative input schemas, tool annotations, resources, and prompt.
 - [Contributing](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/CONTRIBUTING.md): Development workflow.
 - [Security](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/SECURITY.md): Vulnerability reporting.
