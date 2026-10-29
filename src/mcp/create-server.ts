@@ -10,6 +10,7 @@ import type { WhiteboardStore } from "../server/store.js";
 import {readAgentContext} from '../server/agent-context.js';
 import {exportBoard} from '../server/portable-export.js';
 import {APP_VERSION} from '../server/app-metadata.js';
+import {MCP_TOOL_DESCRIPTIONS_EN} from './tool-descriptions.js';
 
 const boardIdSchema = z.string().min(1).default("default").describe("白板 ID；省略时使用最近更新的白板，建议始终指定准确 ID");
 const expectedVersionSchema=z.number().int().positive().optional().describe('先 inspect 获得版本；过期写入会返回 VERSION_CONFLICT 而不会覆盖内容');
@@ -32,7 +33,8 @@ export function createMcpServer(store: WhiteboardStore): McpServer {
         return {...content({error:detail}),isError:true};
       }
     }) as ToolCallback<Input>;
-    return server.registerTool(name,{...config,outputSchema:ToolResultSchema},guarded);
+    const description=[MCP_TOOL_DESCRIPTIONS_EN[name],config.description].filter(Boolean).join('\n');
+    return server.registerTool(name,{...config,description,outputSchema:ToolResultSchema},guarded);
   }
   server.registerResource('board-snapshot',new ResourceTemplate('moki-whiteboard://boards/{boardId}',{list:async()=>({resources:store.list().map(board=>({uri:'moki-whiteboard://boards/'+board.id,name:board.title,mimeType:'application/json'}))})}),{mimeType:'application/json',description:'指定白板的完整原生快照'},async(uri,{boardId})=>({contents:[{uri:uri.href,mimeType:'application/json',text:JSON.stringify(store.get(String(boardId)))}]}));
   tool('whiteboard_rename',{description:'重命名明确指定的白板；支持版本校验。',inputSchema:{boardId:z.string().min(1),title:z.string().trim().min(1).max(120),expectedVersion:z.number().int().positive().optional()},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false}},async({boardId,title,expectedVersion})=>content({board:store.rename(boardId,title,'mcp-agent',expectedVersion)}));

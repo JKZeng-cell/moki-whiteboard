@@ -13,7 +13,8 @@
     "url": "https://github.com/JKZeng-cell/moki-whiteboard/issues"
   },
   "type": "module",
-  "description": "MOKI 白板独立应用与 MCP Server",
+  "description": "Local-first infinite whiteboard and MCP server for AI agents / 本地优先的开源无限白板",
+  "keywords": ["whiteboard", "infinite-canvas", "mcp", "mcp-server", "model-context-protocol", "ai-agents", "mind-map", "local-first", "electron", "typescript"],
   "main": "dist/desktop/main.js",
   "bin": {
     "moki-whiteboard-mcp": "./dist/mcp/server.js"

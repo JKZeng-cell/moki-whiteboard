@@ -14,6 +14,23 @@ function textResult(result: Awaited<ReturnType<Client["callTool"]>>): Record<str
 }
 
 describe("MOKI whiteboard MCP", () => {
+  it('advertises English and Chinese descriptions for all 16 tools',async()=>{
+    const store=new WhiteboardStore(':memory:');
+    const server=createMcpServer(store),client=new Client({name:'discovery-test',version:'1'});
+    const [a,b]=InMemoryTransport.createLinkedPair();
+    cleanup.push(async()=>{await client.close();await server.close();store.close();});
+    await Promise.all([server.connect(b),client.connect(a)]);
+    const {tools}=await client.listTools();
+    expect(tools).toHaveLength(16);
+    for(const tool of tools){
+      expect(tool.description).toMatch(/^[A-Z]/);
+      expect(tool.description).toMatch(/[\u4e00-\u9fff]/);
+      expect(tool.inputSchema).toBeDefined();
+    }
+    expect(tools.find(tool=>tool.name==='whiteboard_native_edit')?.description).toContain('virtual folders');
+    expect(tools.find(tool=>tool.name==='whiteboard_delete_board')?.annotations?.destructiveHint).toBe(true);
+  });
+
   it('uses the native editor for grouping, folders, and mind map branches',async()=>{
     const store=new WhiteboardStore(':memory:');const server=createMcpServer(store),client=new Client({name:'native-agent',version:'1'});const [a,b]=InMemoryTransport.createLinkedPair();await Promise.all([server.connect(b),client.connect(a)]);cleanup.push(async()=>{await client.close();await server.close();store.close();});const inspected=textResult(await client.callTool({name:'whiteboard_inspect',arguments:{}}));const boardId=(inspected.board as {id:string}).id,pageId=(inspected.pages as {id:string}[])[0]!.id;
     const added=textResult(await client.callTool({name:'whiteboard_add_elements',arguments:{boardId,pageId,elements:[{kind:'note',text:'A'},{kind:'note',text:'B'}]}}));const ids=added.elementIds as string[];const grouped=textResult(await client.callTool({name:'whiteboard_native_edit',arguments:{boardId,pageId,action:'group',ids}}));expect(grouped.result).toBeTypeOf('string');const collapsed=textResult(await client.callTool({name:'whiteboard_native_edit',arguments:{boardId,pageId,action:'collapse',ids}}));expect(collapsed.result).toBeTypeOf('string');await client.callTool({name:'whiteboard_native_edit',arguments:{boardId,pageId,action:'expand',ids:[collapsed.result]}});

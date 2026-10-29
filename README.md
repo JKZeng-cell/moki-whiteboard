@@ -1,14 +1,20 @@
 # MOKI 白板 · MOKI Whiteboard
 
-本地优先、支持 MCP Agent 操作的开源无限画布。
+本地优先、支持 AI Agent 直接读写的开源无限白板与 MCP Server：思维导图、多媒体素材、分页管理、虚拟文件夹。
 
-A local-first, open-source infinite canvas that MCP-enabled agents can read and edit.
+A local-first, open-source infinite whiteboard and MCP server for AI coding agents: editable mind maps, multimedia assets, pages, and collapsible virtual folders. Built with Electron, React, TypeScript, and SQLite.
 
 [简体中文](#zh-cn) · [English](#english)
 
 [![CI](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/ci.yml/badge.svg)](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-6558d3.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.7-30364d.svg)](package.json)
+
+**Agent 接入 / Agent integration:** [MCP quickstart & tool reference](docs/agent-guide.md) · [LLM-readable documentation index](llms.txt) · [8-page visual showcase](docs/showcase/README.md)
+
+适合需要让 Agent 收集参考、整理素材、生成可编辑思维导图或操作本地画布的工作流。MOKI 不内置模型、网页搜索或图片生成服务，这些能力来自你连接的 Agent。
+
+Use MOKI when an agent needs to organize references, edit a mind map, or manipulate a local visual workspace. Models, web search, and image generation are provided by your connected agent, not bundled services.
 
 <a id="zh-cn"></a>
 
@@ -153,6 +159,8 @@ docs/             截图与发布资料
 ## 参与贡献
 
 欢迎 Issue 和 Pull Request。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)；安全问题请按照 [SECURITY.md](SECURITY.md) 私下报告。
+
+如果这个项目对你有帮助，欢迎 Star 收藏，让更多创作者和 Agent 开发者发现它。也欢迎分享你的实际使用场景。
 
 ## License
 
@@ -305,6 +313,8 @@ docs/             Screenshots and release materials
 ### Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+If MOKI helps your workflow, consider starring the repository so other creators and agent developers can discover it. Real use cases and feedback are especially welcome.
 
 ### License
 
