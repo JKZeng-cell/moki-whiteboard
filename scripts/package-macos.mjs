@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const {version}=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 const arch=process.argv.find(arg=>arg.startsWith('--arch='))?.slice(7)??process.arch;
 if(process.platform!=='darwin')throw new Error('Build macOS installers on a macOS host or the macOS Packages workflow.');
-if(!['arm64','x64'].includes(arch)||arch!==process.arch)throw new Error('Use a native arm64 or x64 runner matching the requested architecture.');
+if(arch!=='arm64'||process.arch!=='arm64')throw new Error('macOS packaging currently supports Apple Silicon arm64 only: the bundled Office formula engine does not provide a darwin-x64 native binary.');
 const output=`release-build-mac-${version}-${arch}-${new Date().toISOString().replace(/[:.]/g,'-')}`;
 async function run(args){
  const child=spawn(process.execPath,args,{cwd:root,stdio:'inherit',env:{...process.env,CSC_IDENTITY_AUTO_DISCOVERY:'false'}});

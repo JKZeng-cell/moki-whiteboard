@@ -148,14 +148,14 @@ npm run desktop:dist
 
 ## macOS 打包
 
-Apple Silicon 与 Intel 分别在对应架构的 Mac 上构建：
+当前支持 Apple Silicon（arm64），请在对应架构的 Mac 上构建：
 
 ```bash
 npm ci
 npm run desktop:dist:mac
 ```
 
-也可手动运行仓库的 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)。两套架构各自产出 DMG、ZIP、SHA-256 和验收报告，先通过原生构建机上的实际客户端 / MCP 验证，再作为 Actions 构建附件保存；不会自动发布到 Release。
+也可手动运行仓库的 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)。产出 DMG、ZIP、SHA-256 和验收报告，先通过原生构建机上的实际客户端 / MCP 验证，再作为 Actions 构建附件保存 30 天；不会自动发布到 Release。Intel Mac 暂不提供安装包：当前 Office 预览依赖的公式引擎不支持 `darwin-x64`，已在原生 Intel 构建验收中确认。
 
 Mac 数据默认在 `~/Library/Application Support/moki-whiteboard`，素材缓存位于其中的 `whiteboard-materials`，与 `.app` 包隔离；可在设置中更改缓存路径。当前构建不使用 Developer ID 签名或 Apple 公证，不能视为 Gatekeeper 已认可的正式签名包。
 
@@ -317,14 +317,14 @@ Windows packages are currently **not code-signed**. Windows may show an unknown-
 
 ### macOS Packaging
 
-Build on a Mac matching the intended architecture (Apple Silicon arm64 or Intel x64):
+Build on an Apple Silicon (arm64) Mac:
 
 ```bash
 npm ci
 npm run desktop:dist:mac
 ```
 
-Alternatively, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml). Each native runner builds a DMG and ZIP, verifies the extracted app and MCP integration, and uploads checksums and verification reports as Actions artifacts. The workflow does not publish a Release automatically.
+Alternatively, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml). The native arm64 runner builds a DMG and ZIP, verifies the extracted app and MCP integration, and uploads checksums and verification reports as Actions artifacts retained for 30 days. The workflow does not publish a Release automatically. Intel Mac packages are not offered: the bundled Office formula engine does not support `darwin-x64`, as confirmed by native Intel package verification.
 
 Data defaults to `~/Library/Application Support/moki-whiteboard`; the default asset cache is its `whiteboard-materials` subdirectory, outside the `.app` bundle. The cache path remains configurable. These builds are not Developer ID-signed or Apple-notarized; do not treat them as Gatekeeper-approved distribution builds.
 

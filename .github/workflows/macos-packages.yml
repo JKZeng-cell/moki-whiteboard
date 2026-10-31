@@ -2,12 +2,6 @@ name: macOS Packages
 
 on:
   workflow_dispatch:
-    inputs:
-      architecture:
-        description: Native Mac architecture to package
-        type: choice
-        default: all
-        options: [all, arm64, x64]
 
 permissions:
   contents: read
@@ -18,8 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ${{ fromJSON(inputs.architecture == 'arm64' && '["arm64"]' || inputs.architecture == 'x64' && '["x64"]' || '["arm64","x64"]') }}
-    runs-on: ${{ matrix.arch == 'arm64' && 'macos-15' || 'macos-15-intel' }}
+        # The bundled Office formula engine has no darwin-x64 native binary.
+        arch: [arm64]
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'

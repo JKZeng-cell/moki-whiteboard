@@ -18,6 +18,6 @@ Use `whiteboard_list`, then `whiteboard_inspect`; use explicit returned IDs and 
 
 ## Availability
 
-Clone and build from source. Node.js 22.5+ is required. The npm package is private and is not published for `npx moki-whiteboard` installation. Windows installers are in Releases; macOS arm64/x64 packaging runs on native Macs via the manual macOS Packages workflow, without automatic Release publication. For an installed desktop app, copy its exact MCP command, entry path, and environment from Settings > MCP. Client configuration formats differ; no universal client installation file is implied.
+Clone and build from source. Node.js 22.5+ is required. The npm package is private and is not published for `npx moki-whiteboard` installation. Windows installers are in Releases; macOS Apple Silicon arm64 packaging runs on a native Mac via the manual macOS Packages workflow, with verified artifacts retained for 30 days and no automatic Release publication. Intel Mac packages are unavailable because the bundled Office formula engine lacks darwin-x64 support. For an installed desktop app, copy its exact MCP command, entry path, and environment from Settings > MCP. Client configuration formats differ; no universal client installation file is implied.
 
 This file is a supplementary documentation index, not a guarantee of crawler support, search ranking, or automatic agent installation.

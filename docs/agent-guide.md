@@ -17,7 +17,7 @@ The connected agent supplies reasoning, web search, and image generation. MOKI d
 
 ## 1. Install and build from source
 
-Requires Node.js 22.5+ and npm. Windows installers are published in Releases. macOS DMG / ZIP packaging is provided by the manual macOS Packages workflow, with separate Apple Silicon and Intel native builds; use its verified artifacts when available. Linux desktop packaging is not claimed here.
+Requires Node.js 22.5+ and npm. Windows installers are published in Releases. macOS Apple Silicon (arm64) DMG / ZIP packaging is provided by the manual macOS Packages workflow; verified artifacts are retained for 30 days. Intel Mac packages are unavailable because the bundled Office formula engine does not support darwin-x64. Linux desktop packaging is not claimed here.
 
 ```powershell
 git clone https://github.com/JKZeng-cell/moki-whiteboard.git
