@@ -24,7 +24,7 @@ describe('macOS packaging boundaries',()=>{
  });
  it('uses a separate unsigned macOS config and a read-only manual workflow',()=>{
   const mac=JSON.parse(readFileSync('electron-builder.mac.json','utf8'));
-  expect(mac.extends).toBe('./electron-builder.json');expect(mac.publish).toBeNull();
+  expect(mac.extends).toBe('./electron-builder.json');expect(mac.publish).toBeNull();expect(mac.electronDist).toBeNull();
   expect(mac.mac.target).toEqual(['dmg','zip']);expect(mac.mac.identity).toBeNull();expect(mac.mac.notarize).toBe(false);
   const workflow=readFileSync('.github/workflows/macos-packages.yml','utf8');
   expect(workflow).toContain('workflow_dispatch:');expect(workflow).toContain('contents: read');

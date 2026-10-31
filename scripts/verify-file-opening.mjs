@@ -8,11 +8,10 @@ import {WhiteboardStore} from '../dist/server/store.js';
 import {createPage,addElements} from '../dist/core/board.js';
 import {exportBoard} from '../dist/server/portable-export.js';
 import {desktopBundlePaths} from './desktop-bundle-paths.mjs';
-import electron from 'electron';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const bundle=process.argv[2]?resolve(process.argv[2]):undefined;
-const executable=bundle?desktopBundlePaths(bundle).executable:electron;
+const executable=bundle?desktopBundlePaths(bundle).executable:(await import('electron')).default;
 if(bundle){
  const metadata=JSON.parse(await readFile(join(desktopBundlePaths(bundle).unpacked,'package.json'),'utf8'));
  assert.equal(metadata.version,JSON.parse(await readFile(join(root,'package.json'),'utf8')).version);

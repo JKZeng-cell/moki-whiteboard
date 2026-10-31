@@ -1,5 +1,6 @@
 {
   "extends": "./electron-builder.json",
+  "electronDist": null,
   "publish": null,
   "mac": {
     "target": ["dmg", "zip"],
