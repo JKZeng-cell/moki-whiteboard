@@ -146,6 +146,21 @@ npm run desktop:dist
 
 当前项目的 Windows 安装包尚未进行代码签名，可能出现未知发布者或 SmartScreen 提示。请只从项目 Release 或明确的官方渠道下载，并核对 SHA-256。
 
+## macOS 打包
+
+Apple Silicon 与 Intel 分别在对应架构的 Mac 上构建：
+
+```bash
+npm ci
+npm run desktop:dist:mac
+```
+
+也可手动运行仓库的 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)。两套架构各自产出 DMG、ZIP、SHA-256 和验收报告，先通过原生构建机上的实际客户端 / MCP 验证，再作为 Actions 构建附件保存；不会自动发布到 Release。
+
+Mac 数据默认在 `~/Library/Application Support/moki-whiteboard`，素材缓存位于其中的 `whiteboard-materials`，与 `.app` 包隔离；可在设置中更改缓存路径。当前构建不使用 Developer ID 签名或 Apple 公证，不能视为 Gatekeeper 已认可的正式签名包。
+
+DMG 版本请将应用拖入 Applications，ZIP 请完整解压 `.app` 后移动到 Applications 再运行。请只使用已核对校验值的可信来源产物；如系统阻止打开，请按 macOS 的隐私与安全设置说明处理，不要关闭全局安全保护。
+
 ## 项目结构
 
 ```text
@@ -299,6 +314,21 @@ npm run desktop:dist
 The script creates a fresh `release-build-*` directory containing an x64 NSIS installer and a complete portable ZIP, without overwriting previous build directories. Desktop data defaults to `%APPDATA%/moki-whiteboard`; uninstalling does not deliberately delete the user database.
 
 Windows packages are currently **not code-signed**. Windows may show an unknown-publisher or SmartScreen warning. Download only from this project's Releases or a clearly identified official channel, and verify the SHA-256 checksum.
+
+### macOS Packaging
+
+Build on a Mac matching the intended architecture (Apple Silicon arm64 or Intel x64):
+
+```bash
+npm ci
+npm run desktop:dist:mac
+```
+
+Alternatively, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml). Each native runner builds a DMG and ZIP, verifies the extracted app and MCP integration, and uploads checksums and verification reports as Actions artifacts. The workflow does not publish a Release automatically.
+
+Data defaults to `~/Library/Application Support/moki-whiteboard`; the default asset cache is its `whiteboard-materials` subdirectory, outside the `.app` bundle. The cache path remains configurable. These builds are not Developer ID-signed or Apple-notarized; do not treat them as Gatekeeper-approved distribution builds.
+
+For DMG, drag the app to Applications. For ZIP, fully extract the `.app` and move it to Applications before running. Verify checksums and use only trusted downloads. If macOS blocks launch, follow its Privacy & Security guidance rather than disabling system-wide protections.
 
 ### Project Structure
 

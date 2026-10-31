@@ -11,6 +11,7 @@ import {WhiteboardStore} from '../server/store.js';
 import {ResourceCache,legacyResourcePath} from '../server/resource-cache.js';
 import {DEVELOPER_CONTACT_URL,isAllowedExternalUrl} from '../shared/app-metadata.js';
 import {APP_VERSION} from '../server/app-metadata.js';
+import {desktopCachePaths} from './runtime-paths.js';
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -70,11 +71,11 @@ async function waitForServer(url: string): Promise<void> {
 }
 
 async function openWindow() {
-  if (!process.env.MOKI_WHITEBOARD_EXTERNAL_SERVER) {
+  if (!process.env.MOKI_WHITEBOARD_EXTERNAL_SERVER && !server) {
     const dataPath = process.env.MOKI_WHITEBOARD_DATA ?? (app.isPackaged ? join(app.getPath("userData"), "moki-whiteboard.db") : join(process.cwd(), "data", "moki-whiteboard.db"));
     store=new WhiteboardStore(dataPath);
-    const installRoot=dirname(process.execPath);
-    resourceCache=new ResourceCache(store,app.isPackaged&&!process.env.MOKI_WHITEBOARD_DATA?join(installRoot,'whiteboard-materials'):legacyResourcePath(store),app.isPackaged?installRoot:undefined);
+    const paths=desktopCachePaths(process.platform,process.execPath,app.getPath('userData'));
+    resourceCache=new ResourceCache(store,app.isPackaged&&!process.env.MOKI_WHITEBOARD_DATA?paths.defaultPath:legacyResourcePath(store),app.isPackaged?paths.installPath:undefined);
     try{resourceCache.activate();}catch(error){resourceCache.error='素材目录初始化或迁移失败，继续使用原目录：'+String(error);}
     const runtimeRoot=app.isPackaged?join(app.getAppPath()+'.unpacked','dist'):join(here,'..');
     server=await createApp({store,resourceCache,webRoot:join(runtimeRoot,'web'),mcpRuntime:{command:process.execPath,env:{ELECTRON_RUN_AS_NODE:'1'},entryPath:join(runtimeRoot,'mcp/server.js')}});
@@ -86,6 +87,7 @@ async function openWindow() {
   const iconRoot=app.isPackaged?join(app.getAppPath()+'.unpacked','dist/web'):join(here,'../web');
   const win = new BrowserWindow({ width: 1440, height: 900, minWidth: 760, minHeight: 560, backgroundColor: "#f2f1f7", title: "MOKI 白板",icon:join(iconRoot,'moki-whiteboard-icon.png'), webPreferences: { contextIsolation: true, sandbox: true, preload:join(here,'preload.cjs') } });
   activeWindow=win;
+  win.on('closed',()=>{if(activeWindow===win)activeWindow=undefined;});
   win.setMenuBarVisibility(false);
   win.webContents.setWindowOpenHandler(({ url }) => { if(isAllowedExternalUrl(url))void shell.openExternal(url); return { action: "deny" }; });
   await win.loadURL(localOrigin);
@@ -154,7 +156,12 @@ async function openWindow() {
   }
 }
 
-if(primary)app.whenReady().then(async () => {installDesktopBridge();await openWindow();}).catch(async error=>{console.error(error);if(process.env.MOKI_WHITEBOARD_SMOKE!=='1')dialog.showErrorBox('MOKI 白板启动失败',String(error));await server?.close();store?.close();app.exit(1);});
+if(primary)app.whenReady().then(async () => {
+  installDesktopBridge();
+  if(process.platform==='darwin')Menu.setApplicationMenu(Menu.buildFromTemplate([{role:'appMenu'},{role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'}]));
+  await openWindow();
+  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)void openWindow().catch(error=>{console.error(error);dialog.showErrorBox('MOKI 白板打开失败',String(error));});});
+}).catch(async error=>{console.error(error);if(process.env.MOKI_WHITEBOARD_SMOKE!=='1')dialog.showErrorBox('MOKI 白板启动失败',String(error));await server?.close();store?.close();app.exit(1);});
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 let closing=false;
 app.on('before-quit',event=>{if(closing||!server)return;event.preventDefault();closing=true;void server.close().finally(()=>{store?.close();app.exit(Number(process.exitCode??0));});});

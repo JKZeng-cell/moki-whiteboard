@@ -8,6 +8,7 @@ release/
 release-build-*/
 *.log
 build/installer-files.nsh
+build/moki-whiteboard-icon.icns
 .env
 .env.*
 !.env.example

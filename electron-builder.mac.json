@@ -1,0 +1,17 @@
+{
+  "extends": "./electron-builder.json",
+  "publish": null,
+  "mac": {
+    "target": ["dmg", "zip"],
+    "executableName": "MOKI Whiteboard",
+    "icon": "build/moki-whiteboard-icon.icns",
+    "category": "public.app-category.productivity",
+    "darkModeSupport": true,
+    "identity": null,
+    "hardenedRuntime": false,
+    "notarize": false,
+    "artifactName": "MOKI-Whiteboard-${version}-macOS-${arch}.${ext}",
+    "fileAssociations": [{"ext": ["moki", "moki-board"], "name": "MOKI Whiteboard", "role": "Editor"}]
+  },
+  "dmg": {"title": "MOKI Whiteboard ${version}", "sign": false}
+}

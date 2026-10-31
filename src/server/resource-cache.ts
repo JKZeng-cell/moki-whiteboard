@@ -47,6 +47,7 @@ export class ResourceCache {
     if(target===parse(target).root)throw new Error('不能将磁盘根目录设为素材目录');
     if(this.installPath){
       const install=resolve(this.installPath);
+      if(install.endsWith('.app')&&within(install,target))throw new Error('素材目录不能放在 macOS 应用包内');
       if(within(target,install)||['resources','locales'].some(name=>within(join(install,name),target)))throw new Error('素材目录必须与客户端程序文件隔离，不能使用安装根目录或 resources/locales');
     }
     if(target!==this.path&&(within(this.path,target)||within(target,this.path)))throw new Error('新旧素材目录不能相互包含');

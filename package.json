@@ -32,7 +32,8 @@
     "mcp": "tsx src/mcp/server.ts",
     "mcp:dist": "node dist/mcp/server.js",
     "desktop": "node scripts/build-whiteboard-icon.mjs && npm run build && electron .",
-    "desktop:dist": "node scripts/package-desktop.mjs"
+    "desktop:dist": "node scripts/package-desktop.mjs",
+    "desktop:dist:mac": "node scripts/package-macos.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

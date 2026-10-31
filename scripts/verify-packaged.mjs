@@ -5,11 +5,12 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
+import {desktopBundlePaths} from './desktop-bundle-paths.mjs';
 const bundle=resolve(process.argv[2]??'release/win-unpacked');
-const executable=join(bundle,'MOKI Whiteboard.exe');
-const entry=join(bundle,'resources/app.asar.unpacked/dist/mcp/server.js');
+const {executable,unpacked}=desktopBundlePaths(bundle);
+const entry=join(unpacked,'dist/mcp/server.js');
 await access(executable);await access(entry);
-const {version}=JSON.parse(await readFile(join(bundle,'resources/app.asar.unpacked/package.json'),'utf8'));
+const {version}=JSON.parse(await readFile(join(unpacked,'package.json'),'utf8'));
 const profile=await mkdtemp(join(tmpdir(),'moki-whiteboard-packaged-'));
 const data=join(profile,'smoke.db');
 const client=new Client({name:'packaged-smoke-agent',version:'1.0.0'});
@@ -20,6 +21,7 @@ try{
  await client.connect(transport);
  if(client.getServerVersion()?.version!==version)throw new Error('Packaged MCP version mismatch');
  const tools=await client.listTools();if(tools.tools.length!==16)throw new Error('Packaged MCP tools missing');
+ if(tools.tools.some(tool=>!/^\p{Lu}/u.test(tool.description??'')||!/[\u4e00-\u9fff]/.test(tool.description??'')))throw new Error('Bilingual MCP discovery metadata missing');
  const initial=await client.callTool({name:'whiteboard_inspect',arguments:{}});const board=initial.structuredContent.board;
  if(initial.structuredContent.pages[0].name!=='页面 1')throw new Error('Default page name mismatch');
  const page=await client.callTool({name:'whiteboard_create_page',arguments:{boardId:board.id}});if(page.isError)throw new Error(JSON.stringify(page));
@@ -42,7 +44,7 @@ try{
  const officeResult=officeOutput.split(/\r?\n/).map(line=>{try{return JSON.parse(line);}catch{return undefined;}}).find(value=>value?.nativeFile);
  if(officeResult?.viewerStatus!==200)throw new Error('Packaged Office viewer missing: '+officeOutput);
  const report={packaged:true,isolatedProfile:true,tools:tools.tools.length,stdioReadWrite:true,protocolErrors:0,office:officeResult,...result};
- await writeFile(join(bundle,'../local-verification.json'),JSON.stringify(report,null,2)+'\n');
+ await writeFile(join(process.argv[3]?resolve(process.argv[3]):resolve(bundle,'..'),'local-verification.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify(report,null,2));
 }catch(error){console.error(stderr);throw error;}finally{
  await client.close();if(!resolve(profile).startsWith(resolve(tmpdir())+sep+'moki-whiteboard-packaged-'))throw new Error('Unsafe profile cleanup');await rm(profile,{recursive:true,force:true,maxRetries:8,retryDelay:250});

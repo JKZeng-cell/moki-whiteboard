@@ -17,7 +17,7 @@ The connected agent supplies reasoning, web search, and image generation. MOKI d
 
 ## 1. Install and build from source
 
-Requires Node.js 22.5+ and npm. Windows desktop packaging is provided by this repository; other packaged desktop platforms are not claimed here.
+Requires Node.js 22.5+ and npm. Windows installers are published in Releases. macOS DMG / ZIP packaging is provided by the manual macOS Packages workflow, with separate Apple Silicon and Intel native builds; use its verified artifacts when available. Linux desktop packaging is not claimed here.
 
 ```powershell
 git clone https://github.com/JKZeng-cell/moki-whiteboard.git

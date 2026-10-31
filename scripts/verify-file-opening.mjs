@@ -7,12 +7,14 @@ import {fileURLToPath} from 'node:url';
 import {WhiteboardStore} from '../dist/server/store.js';
 import {createPage,addElements} from '../dist/core/board.js';
 import {exportBoard} from '../dist/server/portable-export.js';
+import {desktopBundlePaths} from './desktop-bundle-paths.mjs';
+import electron from 'electron';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const bundle=process.argv[2]?resolve(process.argv[2]):undefined;
-const executable=bundle?join(bundle,'MOKI Whiteboard.exe'):join(root,'node_modules/electron/dist/electron.exe');
+const executable=bundle?desktopBundlePaths(bundle).executable:electron;
 if(bundle){
- const metadata=JSON.parse(await readFile(join(bundle,'resources/app.asar.unpacked/package.json'),'utf8'));
+ const metadata=JSON.parse(await readFile(join(desktopBundlePaths(bundle).unpacked,'package.json'),'utf8'));
  assert.equal(metadata.version,JSON.parse(await readFile(join(root,'package.json'),'utf8')).version);
 }
 const scratch=await mkdtemp(join(tmpdir(),'moki-whiteboard-file-open-'));
@@ -39,7 +41,7 @@ try{
  const report=output.split(/\r?\n/).map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(value=>value?.fileOpenSmoke);
  assert.deepEqual(report?.fileOpenSmoke,{startup:true,runtimeNotification:true,pageCount:2,shapeCount:4,mappedFolderRestored:true,queueDrained:true,boardCount:3});
  assert.equal(await readFile(join(folder,'nested','keep.txt'),'utf8'),'portable-folder');
- const evidenceDirectory=bundle?resolve(bundle,'..'):join(root,'output');
+ const evidenceDirectory=process.argv[3]?resolve(process.argv[3]):bundle?resolve(bundle,'..'):join(root,'output');
  await mkdir(evidenceDirectory,{recursive:true});await writeFile(join(evidenceDirectory,'file-opening-verification.json'),JSON.stringify({...report,isolatedProfile:true,sourceFolderUntouched:true,packaged:Boolean(bundle)},null,2)+'\n');
  console.log(JSON.stringify({passed:true,isolatedProfile:true,...report.fileOpenSmoke,sourceFolderUntouched:true,packaged:Boolean(bundle)}));
 }finally{

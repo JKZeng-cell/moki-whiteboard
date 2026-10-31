@@ -1,0 +1,49 @@
+name: macOS Packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+          - arch: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v5
+      - name: Use a physical temporary directory for isolated cache tests
+        run: |
+          temp_root="$(mktemp -d /private/tmp/moki-whiteboard-ci.XXXXXX)"
+          echo "TMPDIR=$temp_root/" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          architecture: ${{ matrix.arch }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node examples/agent-quickstart.mjs
+      - run: npm run desktop:dist:mac -- --arch=${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MOKI-Whiteboard-macOS-${{ matrix.arch }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            release-build-mac-*/*.dmg
+            release-build-mac-*/*.zip
+            release-build-mac-*/*.txt
+            release-build-mac-*/*verification.json
