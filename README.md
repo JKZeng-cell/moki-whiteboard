@@ -16,7 +16,7 @@ A local-first, open-source infinite whiteboard and MCP server for AI coding agen
 
 Use MOKI when an agent needs to organize references, edit a mind map, or manipulate a local visual workspace. Models, web search, and image generation are provided by your connected agent, not bundled services.
 
-## Windows 下载 / Downloads
+## Windows 下载 / Windows downloads
 
 Windows x64 · **v0.1.7** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7)
 
@@ -25,6 +25,18 @@ Windows x64 · **v0.1.7** · [Release / 更新说明](https://github.com/JKZeng-
 - [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/SHA256SUMS-0.1.7.txt)
 
 安装包尚未代码签名，Windows 可能显示未知发布者或 SmartScreen 提示。请核对下载文件的 SHA-256。 / Packages are not code-signed; Windows may show an unknown-publisher or SmartScreen warning. Verify the SHA-256 checksum before running.
+
+<a id="macos-downloads"></a>
+
+## macOS 下载 / macOS downloads
+
+Apple Silicon（arm64）· **v0.1.7** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7)
+
+- [DMG 安装包 / Installer](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/MOKI-Whiteboard-0.1.7-macOS-arm64.dmg)
+- [完整应用 ZIP / App ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/MOKI-Whiteboard-0.1.7-macOS-arm64.zip)
+- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.7/SHA256SUMS-0.1.7-macOS-arm64.txt)
+
+仅支持 Apple Silicon，暂不支持 Intel Mac。当前应用为 ad-hoc 签名，未进行 Developer ID 签名和 Apple 公证；首次打开受阻时，请看[中文处理步骤](#macos-first-launch)。 / Apple Silicon only; Intel Macs are unavailable. The app is ad-hoc signed, without Developer ID signing or Apple notarization. See [first-launch help](#macos-first-launch-en) if macOS blocks it.
 
 <a id="zh-cn"></a>
 
@@ -155,11 +167,39 @@ npm ci
 npm run desktop:dist:mac
 ```
 
-也可手动运行仓库的 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)。产出 DMG、ZIP、SHA-256 和验收报告，先通过原生构建机上的实际客户端 / MCP 验证，再作为 Actions 构建附件保存 30 天；不会自动发布到 Release。Intel Mac 暂不提供安装包：当前 Office 预览依赖的公式引擎不支持 `darwin-x64`，已在原生 Intel 构建验收中确认。
+已发布的 DMG、ZIP 和校验文件可从[上方下载区](#macos-downloads)或 [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7) 获取。自行构建也可手动运行 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)；其原生构建及客户端 / MCP 验证产物保存为 Actions 附件 30 天，不自动发布到 Release。维护者通过独立发布工作流核对来源和哈希后再发布已验证产物。Intel Mac 暂不提供安装包：当前 Office 公式引擎不支持 `darwin-x64`。
 
 Mac 数据默认在 `~/Library/Application Support/moki-whiteboard`，素材缓存位于其中的 `whiteboard-materials`，与 `.app` 包隔离；可在设置中更改缓存路径。当前构建不使用 Developer ID 签名或 Apple 公证，不能视为 Gatekeeper 已认可的正式签名包。
 
-DMG 版本请将应用拖入 Applications，ZIP 请完整解压 `.app` 后移动到 Applications 再运行。请只使用已核对校验值的可信来源产物；如系统阻止打开，请按 macOS 的隐私与安全设置说明处理，不要关闭全局安全保护。
+<a id="macos-first-launch"></a>
+
+### macOS 首次打开：无法验证开发者或无法打开
+
+1. 从本仓库 Release 下载 DMG，将应用拖入“应用程序”（Applications）；使用 ZIP 时先完整解压并移动 `.app`，不要在 DMG 或压缩包中直接运行。
+2. 核对下载文件的 SHA-256，例如在“终端”运行：
+
+```bash
+shasum -a 256 ~/Downloads/MOKI-Whiteboard-0.1.7-macOS-arm64.dmg
+```
+
+本次 DMG 的结果应为 `7dda1998c9b6f052326920e1b975e0aaafbe913db5c870a397e235ca3cec97f7`；ZIP 的校验值见下载区的 SHA-256 文件。
+
+3. 尝试打开一次应用。若提示“无法验证开发者”或“Apple 无法验证此 App 是否包含恶意软件”，关闭提示，再前往 **系统设置 → 隐私与安全性 → 安全性 → 仍要打开**，按提示认证并确认打开。Apple 的[官方说明](https://support.apple.com/zh-cn/102445)介绍了这个单个应用例外。
+
+<details>
+<summary>已核对来源和哈希，仍因下载隔离标记无法打开？</summary>
+
+仅在你确认信任该下载、校验值一致，且上述方法仍不能解除下载隔离时，可在终端对已安装的这一份应用执行：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/MOKI Whiteboard.app"
+```
+
+此命令仅移除指定应用的下载隔离属性，不会补上开发者认证或公证，也不能修复实际损坏。应用如被重命名或安装在其他位置，请将 Finder 中的应用拖入终端替换路径；遇到权限拒绝时请检查安装位置和账户权限。`xattr` 参数可查阅 [Apple 开源手册](https://github.com/apple-oss-distributions/file_cmds/blob/main/xattr/xattr.1)。无需关闭 Gatekeeper 或 SIP。
+
+</details>
+
+若提示文件“已损坏”，先重新下载并检查哈希，不要直接认定是缺少认证；若提示“将损坏你的电脑”、被识别为恶意软件或校验失败，请停止运行。受管理的 Mac 若没有“仍要打开”选项，请联系管理员。以上步骤不能修复 Intel 架构不支持、文件损坏或其他运行错误；仍有问题时请提交 macOS 版本、芯片类型和完整报错。原生构建验收不等同于已在所有 macOS 上人工验证浏览器下载后的 Gatekeeper 弹窗。
 
 ## 项目结构
 
@@ -324,11 +364,39 @@ npm ci
 npm run desktop:dist:mac
 ```
 
-Alternatively, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml). The native arm64 runner builds a DMG and ZIP, verifies the extracted app and MCP integration, and uploads checksums and verification reports as Actions artifacts retained for 30 days. The workflow does not publish a Release automatically. Intel Mac packages are not offered: the bundled Office formula engine does not support `darwin-x64`, as confirmed by native Intel package verification.
+Published DMG / ZIP downloads and checksums are available in the [download section](#macos-downloads) and [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7). For your own builds, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml): the native arm64 runner verifies the extracted app and MCP integration, then retains artifacts for 30 days without automatic publication. Maintainers publish verified artifacts separately after checking provenance and hashes. Intel Mac packages are unavailable because the bundled Office formula engine does not support `darwin-x64`.
 
 Data defaults to `~/Library/Application Support/moki-whiteboard`; the default asset cache is its `whiteboard-materials` subdirectory, outside the `.app` bundle. The cache path remains configurable. These builds are not Developer ID-signed or Apple-notarized; do not treat them as Gatekeeper-approved distribution builds.
 
-For DMG, drag the app to Applications. For ZIP, fully extract the `.app` and move it to Applications before running. Verify checksums and use only trusted downloads. If macOS blocks launch, follow its Privacy & Security guidance rather than disabling system-wide protections.
+<a id="macos-first-launch-en"></a>
+
+### First launch: unidentified developer or blocked app
+
+1. Download from this repository's Release. Drag the app from the DMG to Applications, or fully extract the ZIP and move the `.app` there before launching.
+2. Verify the downloaded file, for example:
+
+```bash
+shasum -a 256 ~/Downloads/MOKI-Whiteboard-0.1.7-macOS-arm64.dmg
+```
+
+The DMG hash is `7dda1998c9b6f052326920e1b975e0aaafbe913db5c870a397e235ca3cec97f7`. ZIP checksums are in the linked checksum file.
+
+3. Try opening the app once. For an unidentified-developer or unverifiable-app alert, dismiss it, then go to **System Settings → Privacy & Security → Security → Open Anyway**. Authenticate and confirm opening. See [Apple's instructions](https://support.apple.com/en-us/102445).
+
+<details>
+<summary>Verified download still blocked by its quarantine attribute?</summary>
+
+Only if you trust the source, the checksum matches, and the settings route has not resolved the download-quarantine restriction, you can remove that attribute from this installed app:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/MOKI Whiteboard.app"
+```
+
+This affects only the named app; it does not add certification, notarize the app, or repair damage. If you renamed or moved the app, drag it from Finder into Terminal to supply the actual path. For permission errors, check the installation location and account permissions. The flags are documented in [Apple's xattr manual](https://github.com/apple-oss-distributions/file_cmds/blob/main/xattr/xattr.1). No global Gatekeeper or SIP change is needed.
+
+</details>
+
+For a damaged-file alert, download again and check the hash first; do not assume every failure is a signing issue. Stop if the checksum differs or macOS reports malware / harm to your computer. On a managed Mac, ask your administrator if Open Anyway is unavailable. These steps cannot fix Intel incompatibility, damaged files, or unrelated crashes. Report your macOS version, chip, and exact error if problems persist. Native build checks do not constitute manual testing of every browser-download Gatekeeper prompt.
 
 ### Project Structure
 

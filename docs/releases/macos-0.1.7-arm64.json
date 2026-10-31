@@ -1,0 +1,23 @@
+{
+  "repository": "JKZeng-cell/moki-whiteboard",
+  "releaseId": 427389793,
+  "tag": "v0.1.7",
+  "version": "0.1.7",
+  "arch": "arm64",
+  "sourceCommit": "8a5339132a1bf351be65b47bb4b94578d362eae1",
+  "runId": 41214263876,
+  "artifactId": 13047019750,
+  "artifactName": "MOKI-Whiteboard-macOS-arm64",
+  "files": [
+    {
+      "name": "MOKI-Whiteboard-0.1.7-macOS-arm64.dmg",
+      "bytes": 250576558,
+      "sha256": "7dda1998c9b6f052326920e1b975e0aaafbe913db5c870a397e235ca3cec97f7"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.7-macOS-arm64.zip",
+      "bytes": 256486623,
+      "sha256": "857e3b9421c0ca7828ea616f70244626357849b68b5b37c65e3f7d90e766fb47"
+    }
+  ]
+}

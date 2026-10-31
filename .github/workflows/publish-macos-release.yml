@@ -1,0 +1,44 @@
+name: Publish verified macOS release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-macos-0.1.7
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Download the pinned, verified Apple Silicon build
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 41214263876
+          artifact-ids: 13047019750
+          path: mac-release
+          merge-multiple: true
+      - name: Verify provenance, checksums, and publication plan
+        run: node scripts/publish-macos-release.mjs mac-release --verify-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Publish assets, update release notes, and verify public downloads
+        run: node scripts/publish-macos-release.mjs mac-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-release-publication-report
+          path: mac-release/github-macos-release-verification.json
+          if-no-files-found: ignore

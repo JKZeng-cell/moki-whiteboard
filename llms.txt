@@ -9,15 +9,16 @@ Use `whiteboard_list`, then `whiteboard_inspect`; use explicit returned IDs and 
 ## Documentation
 
 - [Agent guide](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/docs/agent-guide.md): Setup, transports, exact tool names, safe editing, and example requests.
-- [Bilingual README](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/README.md): Features, development, privacy, and Windows packaging.
+- [Bilingual README](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/README.md): Features, downloads, macOS first-launch help, development, and privacy.
 - [Visual showcase](https://github.com/JKZeng-cell/moki-whiteboard/tree/main/docs/showcase): Eight feature images and explanations.
 - [Windows downloads](https://github.com/JKZeng-cell/moki-whiteboard/releases/latest): x64 installer, portable ZIP, SHA-256 checksums, and signing caveats.
+- [macOS downloads](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.7): Apple Silicon arm64 DMG / ZIP and checksums; no Developer ID signing or Apple notarization. Intel Macs are unavailable.
 - [MCP implementation](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/src/mcp/create-server.ts): Authoritative input schemas, tool annotations, resources, and prompt.
 - [Contributing](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/CONTRIBUTING.md): Development workflow.
 - [Security](https://raw.githubusercontent.com/JKZeng-cell/moki-whiteboard/main/SECURITY.md): Vulnerability reporting.
 
 ## Availability
 
-Clone and build from source. Node.js 22.5+ is required. The npm package is private and is not published for `npx moki-whiteboard` installation. Windows installers are in Releases; macOS Apple Silicon arm64 packaging runs on a native Mac via the manual macOS Packages workflow, with verified artifacts retained for 30 days and no automatic Release publication. Intel Mac packages are unavailable because the bundled Office formula engine lacks darwin-x64 support. For an installed desktop app, copy its exact MCP command, entry path, and environment from Settings > MCP. Client configuration formats differ; no universal client installation file is implied.
+Windows x64 and macOS Apple Silicon arm64 packages and SHA-256 checksums are published in GitHub Releases. Mac builds are not Developer ID-signed or notarized; the README provides scoped first-launch instructions. Intel Mac packages are unavailable because the bundled Office formula engine lacks darwin-x64 support. For source builds, Node.js 22.5+ is required. The npm package is private and is not published for `npx moki-whiteboard` installation. For an installed desktop app, copy its exact MCP command, entry path, and environment from Settings > MCP. Client configuration formats differ; no universal client installation file is implied.
 
 This file is a supplementary documentation index, not a guarantee of crawler support, search ranking, or automatic agent installation.
