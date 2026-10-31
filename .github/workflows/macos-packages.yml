@@ -2,6 +2,12 @@ name: macOS Packages
 
 on:
   workflow_dispatch:
+    inputs:
+      architecture:
+        description: Native Mac architecture to package
+        type: choice
+        default: all
+        options: [all, arm64, x64]
 
 permissions:
   contents: read
@@ -12,15 +18,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: arm64
-            runner: macos-15
-          - arch: x64
-            runner: macos-15-intel
-    runs-on: ${{ matrix.runner }}
+        arch: ${{ fromJSON(inputs.architecture == 'arm64' && '["arm64"]' || inputs.architecture == 'x64' && '["x64"]' || '["arm64","x64"]') }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'macos-15' || 'macos-15-intel' }}
     timeout-minutes: 45
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      UNIVER_DSH_GATEWAY_DEBUG: '1'
     steps:
       - uses: actions/checkout@v5
       - name: Use a physical temporary directory for isolated cache tests
