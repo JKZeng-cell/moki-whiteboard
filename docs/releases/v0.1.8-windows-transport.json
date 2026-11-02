@@ -1,0 +1,11 @@
+{
+  "targetName": "MOKI-Whiteboard-0.1.8-Windows-x64.zip",
+  "parts": [
+    { "name": "transport-0.1.8-Windows-x64.zip.part-001", "bytes": 52428800, "sha256": "25e9748dccd9e3cddd6edfde1632e1f7ec4eccf7136fa16fe66c0433649c2ca2" },
+    { "name": "transport-0.1.8-Windows-x64.zip.part-002", "bytes": 52428800, "sha256": "cd075cd09680464c86631edf80802a9be36dccf09e105b47ad2a5e817371f09a" },
+    { "name": "transport-0.1.8-Windows-x64.zip.part-003", "bytes": 52428800, "sha256": "842002219e0c214d996adb453f9282db4f033ca3fb05fa769757e80b7e1ba78f" },
+    { "name": "transport-0.1.8-Windows-x64.zip.part-004", "bytes": 52428800, "sha256": "7f09d3d42e052073857fb648b3e7c42b648e81ac5868c9d991dca2016fac30d4" },
+    { "name": "transport-0.1.8-Windows-x64.zip.part-005", "bytes": 52428800, "sha256": "2d2572829f7d8dde69b321a4ecefa906a8b79967d15384781ab732394db4bdf3" },
+    { "name": "transport-0.1.8-Windows-x64.zip.part-006", "bytes": 17681644, "sha256": "375aea57aafe8e8d8884c16e242a2328bcbc41f14b17e3dc93a0efd434fe49bd" }
+  ]
+}

@@ -28,6 +28,10 @@ jobs:
           artifact-ids: 13121640410
           path: verified-release
           merge-multiple: true
+      - name: Assemble and verify the unchanged Windows ZIP from transport parts
+        run: node scripts/assemble-release-transport.mjs verified-release
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Verify source, native reports, and all release bytes
         run: node scripts/publish-verified-release.mjs verified-release
         env:
