@@ -1240,16 +1240,20 @@ async function getAssistantWhiteboardUpdate(
   return value;
 }
 
-export function WhiteboardPage({ embedded = false, active = true, boardTitle, initialPageId, onActivePageChange, onCheckpointReady }: {
+export function WhiteboardPage({ embedded = false, active = true, boardTitle, initialPageId, onActivePageChange, onCheckpointReady, onSave, onSaveAs, fileStatus }: {
   embedded?: boolean;
   active?: boolean;
   boardTitle?: string | undefined;
   initialPageId?: string | undefined;
   onActivePageChange?: ((page: WhiteboardPageInfo) => void) | undefined;
   onCheckpointReady?: (checkpoint: (() => Promise<void>) | undefined) => void;
+  onSave?: (()=>Promise<void>) | undefined;
+  onSaveAs?: (()=>Promise<void>) | undefined;
+  fileStatus?: {path:string;label:string;state:'saved'|'pending'|'saving'|'error'} | undefined;
 } = {}) {
   const embeddedRootRef = useRef<HTMLDivElement>(null);
   const store = useMemo(() => createNativeWhiteboardStore(), []);
+  const externalSaveRef=useRef(onSave);externalSaveRef.current=onSave;
   const [latest, setLatest] = useState<WhiteboardLatest>();
   const [versions, setVersions] = useState<
     WhiteboardVersionSummary[]
@@ -2801,7 +2805,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       }
       if (modifier && !event.altKey && key === "s") {
         event.preventDefault();
-        void persist();
+        manualSave();
         return;
       }
       if (modifier && !event.altKey && key === "0") {
@@ -2930,7 +2934,8 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
     }
-    void persist();
+    if(externalSaveRef.current)void externalSaveRef.current().catch(reason=>setError(reason instanceof Error?reason.message:'原文件保存失败'));
+    else void persist();
   }
 
   function exportCurrentWhiteboard(scope: "selection" | "canvas") {
@@ -2970,7 +2975,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         <WorkbenchPageHeader
           eyebrow="MOKI Canvas"
           title={<span className="block max-w-[min(60vw,36rem)] truncate" title={boardTitle || "无限白板"}>{boardTitle || "无限白板"}</span>}
-          description="便签、文本、图片、链接与涂鸦均保存在当前电脑"
+          description={fileStatus?<span className="block max-w-[min(50vw,32rem)] truncate" title={fileStatus.path}>正在编辑文件：{fileStatus.path.split(/[\\/]/u).pop()}</span>:"便签、文本、图片、链接与涂鸦均保存在当前电脑"}
           actionsClassName="gap-2"
           actions={(
             <>
@@ -2987,23 +2992,23 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
             <div
               role="status"
               aria-label="白板保存状态"
-              title={savedLabel(saveState, latest?.pageVersion ?? latest?.version ?? undefined, latest?.createdAt)}
+              title={fileStatus?`${fileStatus.label} · ${fileStatus.path}`:savedLabel(saveState, latest?.pageVersion ?? latest?.version ?? undefined, latest?.createdAt)}
               className={`flex h-9 items-center gap-2 rounded-[14px] border border-white/80 bg-white px-3 text-[0.6875rem] font-bold shadow-sm ${
-                saveState === "error"
+                (saveState === "error" || fileStatus?.state === 'error')
                   ? "text-[#b33c63]"
-                  : saveState === "pending"
+                  : (saveState === "pending" || fileStatus?.state === 'pending')
                     ? "text-[#a87632]"
                     : "text-[#397c66]"
               }`}
             >
-              {saveState === "saving" ? (
+              {saveState === "saving" || fileStatus?.state === 'saving' ? (
                 <LoaderCircle size={13} className="animate-spin" />
-              ) : saveState === "error" ? (
+              ) : saveState === "error" || fileStatus?.state === 'error' ? (
                 <CloudOff size={13} />
               ) : (
                 <CheckCircle2 size={13} />
               )}
-              <span className={embedded ? "min-w-0 truncate" : undefined}>{savedLabel(
+              <span className={embedded ? "min-w-0 truncate" : undefined}>{fileStatus?(fileStatus.state==='error'||fileStatus.state==='saving'?fileStatus.label:saveState==='pending'||saveState==='saving'?'有更改 · 待写入原文件':fileStatus.label):savedLabel(
                 saveState,
                 latest?.pageVersion ?? latest?.version ?? undefined,
                 latest?.createdAt,
@@ -3032,6 +3037,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
               {transferMenuOpen && (
                 <div className="moki-menu-surface absolute right-0 top-11 z-50 w-52 p-2 text-xs text-[#30364d]">
                   <p className="px-2 py-1 font-black">白板文件</p>
+                  {onSaveAs?<button type="button" aria-label="另存为白板文件" onClick={()=>{setTransferMenuOpen(false);void onSaveAs().catch(reason=>setError(reason instanceof Error?reason.message:'另存为失败'));}} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left font-bold hover:bg-[#f2f1ff]"><Save size={14}/>另存为白板文件</button>:null}
                   <button type="button" aria-label="导出白板文件" disabled={Boolean(transferring)} onClick={() => { setTransferMenuOpen(false); void exportPortableWhiteboard(); }} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left font-bold hover:bg-[#f2f1ff] disabled:opacity-45"><FileDown size={14} />导出白板文件</button>
                   <button type="button" aria-label="导入白板文件" disabled={Boolean(transferring)} onClick={() => { setTransferMenuOpen(false); whiteboardInputRef.current?.click(); }} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left font-bold hover:bg-[#f2f1ff] disabled:opacity-45"><FileUp size={14} />导入白板文件</button>
                 </div>

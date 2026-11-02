@@ -15,5 +15,5 @@ await run(process.execPath,[join(root,'scripts/build-whiteboard-icon.mjs')]);
 await run(process.execPath,[join(root,'scripts/build-installer-file-list.mjs')]);
 await run(process.execPath,[join(root,'node_modules/vite/bin/vite.js'),'build']);
 await run(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'-p','tsconfig.build.json']);
-await run(process.execPath,[join(root,'node_modules/electron-builder/out/cli/cli.js'),'--win','nsis','zip','--x64',`--config.directories.output=${output}`]);
+await run(process.execPath,[join(root,'node_modules/electron-builder/out/cli/cli.js'),'--win','nsis','zip','--x64','--publish','never',`--config.directories.output=${output}`]);
 console.log(`Windows client artifacts: ${join(root,output)}`);

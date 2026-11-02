@@ -49,4 +49,25 @@ describe('whiteboard file gateway',()=>{
   const {open}=setup(true);await waitFor(()=>expect(open).toHaveBeenCalledOnce());expect(consume).toHaveBeenCalledOnce();
   requests.push({name:'second.moki',bytes:new Uint8Array([2])});listener();await waitFor(()=>expect(open).toHaveBeenCalledTimes(2));
  });
+ it('binds native picker/drop files to their original path after a successful import',async()=>{
+  const bind=vi.fn(async()=>({path:'D:/demo.moki',savedVersion:1,dirty:false}));
+  window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,getPathForFile:()=> 'D:/demo.moki',whiteboardFiles:{hasPending:async()=>false,consume:async()=>null,onPending:()=>()=>{},readDocument:async()=>({name:'demo.moki',bytes:new Uint8Array([1]),documentToken:'ticket'}),bindDocument:bind}};
+  mocks.fetch.mockResolvedValue({ok:true,json:async()=>({id:'imported',version:1})});const {open}=setup();
+  mocks.fetch.mockResolvedValue({ok:true,json:async()=>({id:'imported',version:1})});
+  fireEvent.change(screen.getByLabelText('选择白板文件'),{target:{files:[new File(['a'],'demo.moki')]}});
+  await waitFor(()=>expect(open).toHaveBeenCalledWith('imported'));expect(bind).toHaveBeenCalledWith('ticket','imported',1);
+ });
+ it('reopens an already bound native file without creating another imported board',async()=>{
+  let pending=true;
+  window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,whiteboardFiles:{hasPending:async()=>pending,consume:async()=>{pending=false;return {name:'same.moki',boardId:'existing'};},onPending:()=>()=>{}}};
+  const {open}=setup();await waitFor(()=>expect(open).toHaveBeenCalledWith('existing'));expect(mocks.parse).not.toHaveBeenCalled();expect(mocks.fetch).not.toHaveBeenCalled();
+ });
+ it('refreshes an externally updated file with an expected board version before binding it again',async()=>{
+  let pending=true;const bind=vi.fn(async()=>({path:'D:/file.moki',savedVersion:8,dirty:false}));
+  window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,whiteboardFiles:{hasPending:async()=>pending,consume:async()=>{pending=false;return {name:'file.moki',bytes:new Uint8Array([1]),replaceBoardId:'existing',replaceBoardVersion:7,documentToken:'refresh'};},onPending:()=>()=>{},bindDocument:bind}};
+  const {open}=setup();mocks.fetch.mockResolvedValue({ok:true,json:async()=>({id:'existing',version:8})});
+  await waitFor(()=>expect(open).toHaveBeenCalledWith('existing'));
+  expect(mocks.fetch).toHaveBeenCalledWith('/api/boards/existing/snapshot',expect.objectContaining({method:'PUT'}));expect(JSON.parse(mocks.fetch.mock.calls[0]![1].body).expectedVersion).toBe(7);
+  expect(bind).toHaveBeenCalledWith('refresh','existing',8);
+ });
 });

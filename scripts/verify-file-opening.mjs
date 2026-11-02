@@ -8,6 +8,7 @@ import {WhiteboardStore} from '../dist/server/store.js';
 import {createPage,addElements} from '../dist/core/board.js';
 import {exportBoard} from '../dist/server/portable-export.js';
 import {desktopBundlePaths} from './desktop-bundle-paths.mjs';
+import {unzipSync,strFromU8} from 'fflate';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const bundle=process.argv[2]?resolve(process.argv[2]):undefined;
@@ -38,7 +39,13 @@ try{
  const code=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',resolve);});clearTimeout(timeout);
  assert.equal(code,0,errors+'\n'+output);
  const report=output.split(/\r?\n/).map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(value=>value?.fileOpenSmoke);
- assert.deepEqual(report?.fileOpenSmoke,{startup:true,runtimeNotification:true,pageCount:2,shapeCount:4,mappedFolderRestored:true,queueDrained:true,boardCount:3});
+ assert.deepEqual(report?.fileOpenSmoke,{startup:true,runtimeNotification:true,pageCount:2,shapeCount:4,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:true,boardCount:3});
+ const savedArchive=unzipSync(await readFile(firstFile)),savedManifest=JSON.parse(strFromU8(savedArchive['manifest.json']));
+ assert.ok(JSON.stringify(savedManifest.snapshot).includes('文件按钮保存验收'));
+ assert.ok(JSON.stringify(savedManifest.snapshot).includes('文件快捷键保存验收'));
+ assert.equal(Object.values(savedManifest.snapshot.document.store).filter(record=>record.typeName==='page').length,2);
+ assert.equal(strFromU8(savedArchive[savedManifest.resources[0].files[0].archivePath]),'portable-folder');
+ assert.equal(savedManifest.assets.length,1);
  assert.equal(await readFile(join(folder,'nested','keep.txt'),'utf8'),'portable-folder');
  const evidenceDirectory=process.argv[3]?resolve(process.argv[3]):bundle?resolve(bundle,'..'):join(root,'output');
  await mkdir(evidenceDirectory,{recursive:true});await writeFile(join(evidenceDirectory,'file-opening-verification.json'),JSON.stringify({...report,isolatedProfile:true,sourceFolderUntouched:true,packaged:Boolean(bundle)},null,2)+'\n');

@@ -29,5 +29,5 @@ export async function exportBoard(store:WhiteboardStore,boardId:string){
   if(!/^(?:data:|https?:)/i.test(value))throw new Error('不支持的白板资源地址');
   return fetch(input,init);
  };
- return createWhiteboardTransferFile(board.snapshot,{fileName:board.title,boardTitle:board.title,fetcher,resources,readResource:readWhiteboardTransferResource});
+ return {...await createWhiteboardTransferFile(board.snapshot,{fileName:board.title,boardTitle:board.title,fetcher,resources,readResource:readWhiteboardTransferResource}),boardVersion:board.version};
 }

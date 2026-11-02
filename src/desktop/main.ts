@@ -2,7 +2,8 @@ import { app, BrowserWindow, shell, dialog, ipcMain, clipboard,Menu,Tray,nativeI
 import {readDesktopClipboardResources} from '../vendor/moki/desktop/clipboard-resources.js';
 import {buildMediaContextMenuTemplate} from '../vendor/moki/desktop/media-context-menu.js';
 import {buildAttachmentContextMenuTemplate} from '../vendor/moki/desktop/attachment-context-menu.js';
-import { readFile,stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import {WhiteboardDocuments} from './whiteboard-documents.js';
 import {WhiteboardOpenQueue,whiteboardPaths} from './whiteboard-open.js';
 import {readWhiteboardTransferResource,restoreWhiteboardTransferResources} from '../vendor/moki/desktop/whiteboard-transfer-resources.js';
 import type {DesktopWhiteboardTransferResource} from '../vendor/moki/shared/desktop-whiteboard-transfer-contract.js';
@@ -21,6 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 let server: Awaited<ReturnType<typeof createApp>> | undefined;
 let store: WhiteboardStore | undefined;
 let resourceCache:ResourceCache|undefined;
+let documents:WhiteboardDocuments|undefined;
 let activeWindow: BrowserWindow | undefined;
 let desktopSettings:DesktopSettings|undefined;
 let tray:Tray|undefined;
@@ -70,7 +72,13 @@ function installDesktopBridge(){
  handle('moki:read-resource',(input:{source:string;name?:string})=>readWhiteboardTransferResource(input));
  handle('moki:restore-resources',(resources:DesktopWhiteboardTransferResource[])=>restoreWhiteboardTransferResources(resourceRoot(),resources));
  handle('moki:file-pending',()=>pendingWhiteboards.pending);
- handle('moki:file-consume',async()=>{const path=pendingWhiteboards.take();if(!path)return null;try{const info=await stat(path);if(!info.isFile()||info.size>256*1024*1024)throw new Error('请选择不超过 256 MB 的白板文件');return {name:path.split(/[\\/]/).pop(),bytes:new Uint8Array(await readFile(path))};}catch(error){return {name:path,error:String(error)};}});
+ const requireDocuments=()=>{if(!documents)throw new Error('直接文件编辑需要使用客户端本地服务');return documents;};
+ handle('moki:file-consume',async()=>{const path=pendingWhiteboards.take();if(!path)return null;try{return await requireDocuments().read(path);}catch(error){return {name:path,error:String(error)};}});
+ handle('moki:document-read',(path:string)=>requireDocuments().read(path));
+ handle('moki:document-bind',(token:string,boardId:string,expectedVersion:number)=>requireDocuments().bind(token,boardId,expectedVersion));
+ handle('moki:document-info',(boardId:string)=>requireDocuments().info(boardId));
+ handle('moki:document-save',(boardId:string,onlyIfDirty=false)=>requireDocuments().save(boardId,onlyIfDirty));
+ handle('moki:document-save-as',async(boardId:string)=>{const board=store!.get(boardId);const result=await dialog.showSaveDialog(activeWindow!,{defaultPath:board.title.replace(/[<>:"/\\|?*\x00-\x1f]/gu,'_')+'.moki',filters:[{name:'MOKI 白板',extensions:['moki']}]});return result.canceled||!result.filePath?null:requireDocuments().saveAs(boardId,result.filePath);});
 }
 if (process.env.MOKI_WHITEBOARD_SMOKE === "1") app.disableHardwareAcceleration();
 if(process.env.MOKI_WHITEBOARD_PROFILE)app.setPath('userData',process.env.MOKI_WHITEBOARD_PROFILE);
@@ -115,6 +123,7 @@ async function createWindow(show:boolean) {
   if (!process.env.MOKI_WHITEBOARD_EXTERNAL_SERVER && !server) {
     const dataPath = process.env.MOKI_WHITEBOARD_DATA ?? (app.isPackaged ? join(app.getPath("userData"), "moki-whiteboard.db") : join(process.cwd(), "data", "moki-whiteboard.db"));
     store=new WhiteboardStore(dataPath);
+    documents=new WhiteboardDocuments(store);
     const paths=desktopCachePaths(process.platform,process.execPath,app.getPath('userData'));
     resourceCache=new ResourceCache(store,app.isPackaged&&!process.env.MOKI_WHITEBOARD_DATA?paths.defaultPath:legacyResourcePath(store),app.isPackaged?paths.installPath:undefined);
     try{resourceCache.activate();}catch(error){resourceCache.error='素材目录初始化或迁移失败，继续使用原目录：'+String(error);}
@@ -158,9 +167,21 @@ async function createWindow(show:boolean) {
       if(records.filter(record=>record.typeName==='page').length!==request.pageCount||records.filter(record=>record.typeName==='shape').length!==request.shapeCount)throw new Error('Imported content missing');
       const folder=records.find(record=>record.typeName==='shape'&&record.type==='resource') as {props?:{localPath?:string}}|undefined;
       if(!folder?.props?.localPath||!(await readFile(join(folder.props.localPath,'nested','keep.txt'),'utf8')).includes('portable-folder'))throw new Error('Mapped folder not restored');
+      const editAndSave=async(marker:string,shortcut:boolean)=>{
+        const pageId=Object.values(store!.get(initial.id).snapshot.document.store).find(record=>record.typeName==='page')!.id;
+        const response=await fetch(`${localOrigin}/api/boards/${initial.id}/elements`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pageId,elements:[{kind:'text',text:marker}]})});
+        if(!response.ok)throw new Error('Document smoke edit failed');
+        await win.webContents.executeJavaScript(shortcut?`window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',${process.platform==='darwin'?'metaKey':'ctrlKey'}:true,bubbles:true,cancelable:true}))`:`document.querySelector('[aria-label="立即保存白板"]').click()`);
+        for(let i=0;i<100;i++){if(documents!.info(initial.id)?.dirty===false)return;await new Promise(resolve=>setTimeout(resolve,100));}
+        throw new Error('Original document was not saved: '+marker);
+      };
+      await editAndSave('文件按钮保存验收',false);
+      await editAndSave('文件快捷键保存验收',true);
+      const reopened=await documents!.read(documents!.info(initial.id)!.path);
+      if(reopened.boardId!==initial.id)throw new Error('Reopening created a duplicate document');
       pendingWhiteboards.add(request.runtimePaths);
       await waitForBoard(request.lastTitle);
-      fileOpenSmoke={startup:true,runtimeNotification:true,pageCount:request.pageCount,shapeCount:request.shapeCount,mappedFolderRestored:true,queueDrained:!pendingWhiteboards.pending,boardCount:store.list().length};
+      fileOpenSmoke={startup:true,runtimeNotification:true,pageCount:request.pageCount,shapeCount:request.shapeCount,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:!pendingWhiteboards.pending,boardCount:store.list().length};
     }
     let settingsSmoke:Record<string,unknown>|undefined;
     if(process.env.MOKI_WHITEBOARD_SMOKE_SETTINGS==='1'){

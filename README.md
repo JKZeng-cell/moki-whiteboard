@@ -71,6 +71,7 @@ MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的
 - 外观：浅色、深色和跟随系统。
 - 桌面运行：设置 → 常规中可选择关闭窗口后在托盘运行、开机自启动；托盘提供重新打开和退出入口，自启动默认关闭。
 - 文件互通：支持 v2 `.moki` ZIP，并兼容旧 `.moki-board`、封装 JSON 和原始快照。
+- 直接编辑文件：客户端双击打开、拖入或选择 `.moki` 文件后，保存按钮及 Ctrl/⌘+S 会更新原文件；分页与附件随文件保留，重复打开复用同一白板。“白板文件 → 另存为白板文件”可保存副本；原文件被外部修改或无法写入时保留本机草稿并提示，避免覆盖。网页版仍将文件导入为本机白板副本。
 - 安全写入：SQLite WAL、乐观版本冲突保护、操作审计和异常剪贴板原子校验。
 
 ## MCP 与 Agent
@@ -273,6 +274,7 @@ MOKI Whiteboard is a standalone React / Electron application evolved from the in
 - Appearance: light, dark, or follow the system theme.
 - Desktop lifecycle: optional close-to-tray, tray Open / Quit actions, and opt-in login startup under Settings → General. Startup is available in packaged Windows / macOS apps and reports OS approval or registration failures; unsigned Mac builds may be restricted. A real login/reboot needs verification after installation.
 - Interoperability: v2 `.moki` ZIP archives, legacy `.moki-board` files, wrapped JSON, and raw snapshots.
+- Edit files directly in the desktop app: double-click, drop, or pick a `.moki` file, then use Save or Ctrl/⌘+S to update that same file with its pages and attachments. Reopening reuses the board. Use **Whiteboard file → Save As** for a separate copy. External changes and write failures preserve your local draft and report an error. The browser version imports a separate local board instead.
 - Safer writes: SQLite WAL, optimistic version-conflict protection, operation auditing, and atomic clipboard validation.
 
 ### MCP and Agents
