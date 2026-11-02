@@ -8,7 +8,7 @@ export function useWhiteboardFiles(options:Options){
  const latest=useRef(options);latest.current=options;
  const input=useRef<HTMLInputElement>(null),queue=useRef(Promise.resolve());
  const [busy,setBusy]=useState(false);
- const enqueue=useRef((files:File[])=>{});
+ const enqueue=useRef<((files:File[])=>void)>(()=>{});
  enqueue.current=(files:File[])=>{
   queue.current=queue.current.then(async()=>{
    setBusy(true);

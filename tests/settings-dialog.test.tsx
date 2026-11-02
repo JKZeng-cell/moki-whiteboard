@@ -9,10 +9,19 @@ import {WorkbenchPageHeader} from '../src/vendor/moki/web/components/workbench-p
 import {NativeControlsContext} from '../src/web/native-context.js';
 const APP_VERSION='9.8.7'; // The UI renders the supplied server version, not a hard-coded product version.
 import {APP_DEVELOPER_EMAIL,DEVELOPER_CONTACT_URL,isAllowedExternalUrl} from '../src/shared/app-metadata.js';
+import type {DesktopSettingsState} from '../src/shared/desktop-settings-contract.js';
 const initial={path:'C:/MOKI/whiteboard-materials',defaultPath:'C:/MOKI/whiteboard-materials',pendingPath:null,error:null};
 afterEach(()=>{cleanup();delete window.mokiDesktop;vi.unstubAllGlobals();});
 function Demo(){const [tab,setTab]=useState<SettingsTab>('appearance'),[themeMode,setThemeMode]=useState<ThemeMode>('light');return <SettingsDialog version={APP_VERSION} tab={tab} onTab={setTab} close={vi.fn()} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<p>MCP 连接内容</p>}/>;}
 describe('unified settings',()=>{
+ it('persists the tray preference and reports OS approval instead of pretending startup is active',async()=>{
+  let state:DesktopSettingsState={closeToTray:true,trayAvailable:true,trayError:null,openAtLogin:false,startupAvailable:true,startupStatus:'disabled',startupHint:'登录时启动'};
+  const set=vi.fn(async(value:{closeToTray?:boolean;openAtLogin?:boolean})=>{state={...state,...value,...(value.openAtLogin?{startupStatus:'requires-approval' as const}:{})};return state;});
+  window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,resourceCache:{get:async()=>initial,set:vi.fn()},desktopSettings:{get:async()=>state,set,quit:vi.fn()}};
+  render(<Demo/>);fireEvent.click(screen.getByRole('tab',{name:'常规'}));await screen.findByRole('switch',{name:'关闭窗口后在托盘运行'});fireEvent.click(screen.getByRole('switch',{name:'关闭窗口后在托盘运行'}));await waitFor(()=>expect(set).toHaveBeenCalledWith({closeToTray:false}));expect(screen.getByRole('switch',{name:'关闭窗口后在托盘运行'})).not.toBeChecked();
+  fireEvent.click(screen.getByRole('switch',{name:'开机自启动'}));expect(await screen.findByRole('status')).toHaveTextContent('尚未生效');
+ });
+ it('shows desktop-only controls honestly in the web preview',()=>{vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({resourceCache:initial}))));render(<Demo/>);fireEvent.click(screen.getByRole('tab',{name:'常规'}));expect(screen.getByText('托盘运行和开机自启动仅在桌面客户端中可用。')).toBeInTheDocument();expect(screen.queryByRole('switch')).toBeNull();});
  it('offers system appearance as a distinct persisted preference, not a light/dark selection',()=>{
   window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,resourceCache:{get:async()=>initial,set:vi.fn()}};render(<Demo/>);fireEvent.click(screen.getByRole('button',{name:'跟随系统'}));expect(screen.getByRole('button',{name:'跟随系统'})).toHaveAttribute('aria-pressed','true');expect(screen.getByRole('button',{name:'浅色模式'})).toHaveAttribute('aria-pressed','false');expect(screen.getByRole('button',{name:'深色模式'})).toHaveAttribute('aria-pressed','false');
  });

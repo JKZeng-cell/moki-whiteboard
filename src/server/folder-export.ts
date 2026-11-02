@@ -1,5 +1,5 @@
 import {constants} from 'node:fs';
-import {copyFile,mkdir,readFile,readdir,stat,writeFile} from 'node:fs/promises';
+import {copyFile,mkdir,readdir,stat,writeFile} from 'node:fs/promises';
 import {basename,extname,join} from 'node:path';
 import {z} from 'zod';
 import {WhiteboardFolderExportSchema,type ResourceLibraryItem} from '../vendor/moki/shared/resource-library-contract.js';

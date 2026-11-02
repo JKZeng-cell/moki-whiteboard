@@ -6,6 +6,8 @@ MOKI Whiteboard is a local-first infinite canvas with a Model Context Protocol s
 
 中文速览：先从应用“设置 → MCP”复制配置。开发者也可从源码构建并使用以下 stdio 配置。修改前 list / inspect，使用明确 ID 与最新版本，修改后再次读取验证。下面的可运行示例使用临时数据库，不会修改你的白板。
 
+You can also select a transport in Settings → MCP, click **复制 Agent 接入说明** (Copy Agent connection instructions), and paste the whole text into your agent. It includes this machine's exact runtime / database or HTTP URL, asks the agent to preserve existing MCP services, and verifies the connection with read-only tools. Client restart or authorization may be required. In the desktop app, Settings → General controls close-to-tray and login startup; keep the app or its tray service running for HTTP connections. Startup is opt-in and subject to OS approval; development builds do not register themselves at login.
+
 ## When to use it
 
 - Turn an agent's plan into an editable mind map, rather than a static screenshot.

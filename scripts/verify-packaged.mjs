@@ -38,6 +38,8 @@ try{
  const result=output.split(/\r?\n/).map(line=>{try{return JSON.parse(line);}catch{return undefined;}}).find(value=>value?.shell);
  if(!result?.native||!result.preload||!result.portable||!result.nativeMenu||result.dataPath!==data||result.mcpCommand!==executable||result.mcpEntryPath!==entry||result.mcpEnv.ELECTRON_RUN_AS_NODE!=='1')throw new Error('Packaged desktop report mismatch: '+output);
  if(!result.settingsSmoke?.about||result.settingsSmoke.appVersion!==version||!result.settingsSmoke.cacheBridge||!result.settingsSmoke.activePathUnchanged)throw new Error('Packaged settings report mismatch: '+output);
+ if(result.settingsSmoke.tabs!==4||!result.settingsSmoke.desktopSettings||!result.settingsSmoke.agentInstructions)throw new Error('Packaged desktop settings or Agent onboarding missing: '+output);
+ if(!result.lifecycleSmoke?.trayCreated||!result.lifecycleSmoke.closeToTray||!result.lifecycleSmoke.backgroundService||!result.lifecycleSmoke.restoreSameWindow)throw new Error('Packaged tray lifecycle verification failed: '+output);
  const office=spawn(executable,[fileURLToPath(new URL('./office-runtime-smoke.mjs',import.meta.url))],{cwd:tmpdir(),windowsHide:true,env:{...process.env,ELECTRON_RUN_AS_NODE:'1',MOKI_WHITEBOARD_SMOKE_BUNDLE:bundle},stdio:['ignore','pipe','pipe']});let officeOutput='';let officeErrors='';
  office.stdout.on('data',chunk=>{officeOutput+=chunk;});office.stderr.on('data',chunk=>{officeErrors=(officeErrors+chunk).slice(-8000);});const officeTimer=setTimeout(()=>office.kill(),60000);
  const officeCode=await new Promise((resolve,reject)=>{office.on('error',reject);office.on('exit',resolve);});clearTimeout(officeTimer);if(officeCode!==0)throw new Error('Packaged Office runtime failed: '+officeErrors+'\n'+officeOutput);

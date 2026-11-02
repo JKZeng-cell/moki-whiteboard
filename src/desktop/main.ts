@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog, ipcMain, clipboard,Menu } from "electron";
+import { app, BrowserWindow, shell, dialog, ipcMain, clipboard,Menu,Tray,nativeImage } from "electron";
 import {readDesktopClipboardResources} from '../vendor/moki/desktop/clipboard-resources.js';
 import {buildMediaContextMenuTemplate} from '../vendor/moki/desktop/media-context-menu.js';
 import {buildAttachmentContextMenuTemplate} from '../vendor/moki/desktop/attachment-context-menu.js';
@@ -12,6 +12,8 @@ import {ResourceCache,legacyResourcePath} from '../server/resource-cache.js';
 import {DEVELOPER_CONTACT_URL,isAllowedExternalUrl} from '../shared/app-metadata.js';
 import {APP_VERSION} from '../server/app-metadata.js';
 import {desktopCachePaths} from './runtime-paths.js';
+import {DesktopSettings,AUTOSTART_ARGUMENT} from './settings.js';
+import {DesktopLifecycle} from './lifecycle.js';
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +22,22 @@ let server: Awaited<ReturnType<typeof createApp>> | undefined;
 let store: WhiteboardStore | undefined;
 let resourceCache:ResourceCache|undefined;
 let activeWindow: BrowserWindow | undefined;
+let desktopSettings:DesktopSettings|undefined;
+let tray:Tray|undefined;
+let openingWindow:Promise<void>|undefined;
+const lifecycle=new DesktopLifecycle({
+ canHide:()=>Boolean(tray&&!tray.isDestroyed()&&desktopSettings?.closeToTray),
+ hide:()=>activeWindow?.hide(),
+ prepare:async()=>{
+  const win=activeWindow;if(!win||win.isDestroyed()||win.webContents.isLoadingMainFrame())return;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try{await Promise.race([win.webContents.executeJavaScript('(async()=>{await window.mokiBeforeQuit?.();})()'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('白板保存超时，请稍后重试退出')),40000);})]);}
+  finally{clearTimeout(timer);}
+ },
+ stop:async()=>{try{await server?.close();}finally{store?.close();tray?.destroy();}},
+ exit:()=>app.exit(Number(process.exitCode??0)),
+ failed:error=>{console.error('退出前保存失败：',error);if(process.env.MOKI_WHITEBOARD_SMOKE==='1'){app.exit(1);return;}void openWindow();dialog.showErrorBox('白板尚未保存，未退出',String(error));}
+});
 const pendingWhiteboards = new WhiteboardOpenQueue(()=>{
  if(activeWindow&&!activeWindow.isDestroyed())activeWindow.webContents.send('moki:file-pending');
 });
@@ -29,6 +47,9 @@ let localOrigin = 'http://127.0.0.1:4321';
 function installDesktopBridge(){
  const requireLocal=(event:Electron.IpcMainInvokeEvent)=>{if(!event.senderFrame?.url.startsWith(localOrigin+'/'))throw new Error('无效桌面调用来源');};
  const handle=(name:string,fn:(...args:any[])=>unknown)=>ipcMain.handle(name,(event,...args)=>{requireLocal(event);return fn(...args);});
+ handle('moki:desktop-get',()=>desktopSettings!.get());
+ handle('moki:desktop-set',(input:unknown)=>desktopSettings!.set(input));
+ handle('moki:desktop-quit',()=>{setImmediate(()=>void lifecycle.quit());});
  handle('moki:cache-get',()=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');return resourceCache.info();});
  handle('moki:cache-set',(path:unknown)=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');if(path!==null&&typeof path!=='string')throw new Error('素材路径无效');return resourceCache.schedule(path);});
  handle('moki:select-file',async()=>{const result=await dialog.showOpenDialog(activeWindow!,{properties:['openFile']});return result.canceled?null:result.filePaths[0]??null;});
@@ -58,9 +79,29 @@ app.setAppUserModelId('com.moki.whiteboard');
 const primary=app.requestSingleInstanceLock();if(!primary)app.quit();
 app.on('second-instance',(_event,args)=>{
  pendingWhiteboards.add(whiteboardPaths(args));
- if(activeWindow?.isMinimized())activeWindow.restore();activeWindow?.show();activeWindow?.focus();
+ if(!args.includes(AUTOSTART_ARGUMENT)||whiteboardPaths(args).length)void openWindow().catch(showWindowError);
 });
-app.on('open-file',(event,path)=>{event.preventDefault();pendingWhiteboards.add([path]);activeWindow?.show();activeWindow?.focus();});
+app.on('open-file',(event,path)=>{event.preventDefault();pendingWhiteboards.add([path]);if(app.isReady())void openWindow().catch(showWindowError);});
+
+function showWindowError(error:unknown){console.error(error);dialog.showErrorBox('MOKI 白板打开失败',String(error));}
+function iconRoot(){return app.isPackaged?join(app.getAppPath()+'.unpacked','dist/web'):join(here,'../web');}
+function createTray(){
+ try{
+  const image=nativeImage.createFromPath(join(iconRoot(),'moki-whiteboard-icon.png')).resize({width:process.platform==='darwin'?18:20,height:process.platform==='darwin'?18:20});
+  if(image.isEmpty())throw new Error('托盘图标无法读取');
+  tray=new Tray(image);tray.setToolTip('MOKI 白板');
+  const show=()=>void openWindow().catch(showWindowError);
+  tray.setContextMenu(Menu.buildFromTemplate([{label:'打开 MOKI 白板',click:show},{type:'separator'},{label:'退出 MOKI 白板',click:()=>void lifecycle.quit()}]));
+  tray.on('double-click',show);tray.on('click',()=>{if(process.platform!=='darwin')show();});
+  desktopSettings!.trayAvailable=true;
+ }catch(error){tray?.destroy();tray=undefined;desktopSettings!.trayError='托盘启动失败：'+String(error);console.error(desktopSettings!.trayError);}
+}
+function openWindow(show=true):Promise<void>{
+ const reveal=()=>{if(activeWindow&&!activeWindow.isDestroyed()){if(activeWindow.isMinimized())activeWindow.restore();activeWindow.show();activeWindow.focus();}};
+ if(activeWindow&&!activeWindow.isDestroyed()){if(show)reveal();return Promise.resolve();}
+ if(openingWindow)return openingWindow.then(()=>{if(show)reveal();});
+ openingWindow=createWindow(show).finally(()=>{openingWindow=undefined;});return openingWindow;
+}
 
 async function waitForServer(url: string): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -70,7 +111,7 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error("MOKI 白板本地服务启动超时");
 }
 
-async function openWindow() {
+async function createWindow(show:boolean) {
   if (!process.env.MOKI_WHITEBOARD_EXTERNAL_SERVER && !server) {
     const dataPath = process.env.MOKI_WHITEBOARD_DATA ?? (app.isPackaged ? join(app.getPath("userData"), "moki-whiteboard.db") : join(process.cwd(), "data", "moki-whiteboard.db"));
     store=new WhiteboardStore(dataPath);
@@ -84,13 +125,15 @@ async function openWindow() {
     catch(error){if((error as NodeJS.ErrnoException).code!=='EADDRINUSE')throw error;localOrigin=await server.listen({host:'127.0.0.1',port:0});}
   }
   await waitForServer(`${localOrigin}/api/health`);
-  const iconRoot=app.isPackaged?join(app.getAppPath()+'.unpacked','dist/web'):join(here,'../web');
-  const win = new BrowserWindow({ width: 1440, height: 900, minWidth: 760, minHeight: 560, backgroundColor: "#f2f1f7", title: "MOKI 白板",icon:join(iconRoot,'moki-whiteboard-icon.png'), webPreferences: { contextIsolation: true, sandbox: true, preload:join(here,'preload.cjs') } });
+  const win = new BrowserWindow({ show:false,width: 1440, height: 900, minWidth: 760, minHeight: 560, backgroundColor: "#f2f1f7", title: "MOKI 白板",icon:join(iconRoot(),'moki-whiteboard-icon.png'), webPreferences: { contextIsolation: true, sandbox: true, preload:join(here,'preload.cjs') } });
   activeWindow=win;
+  win.on('close',event=>lifecycle.close(event));
+  win.on('query-session-end',()=>{lifecycle.exiting=true;});
   win.on('closed',()=>{if(activeWindow===win)activeWindow=undefined;});
   win.setMenuBarVisibility(false);
   win.webContents.setWindowOpenHandler(({ url }) => { if(isAllowedExternalUrl(url))void shell.openExternal(url); return { action: "deny" }; });
   await win.loadURL(localOrigin);
+  if(show)win.show();
   if (process.env.MOKI_WHITEBOARD_SMOKE === "1") {
     let result = { title: "", shell: false };
     for (let attempt = 0; attempt < 50 && !result.shell; attempt += 1) {
@@ -132,6 +175,12 @@ async function openWindow() {
         await wait(()=>document.querySelector('.settings-about')?.textContent.includes(${JSON.stringify('v'+APP_VERSION)}));
         if(document.querySelector('.settings-about a')?.getAttribute('href')!==${JSON.stringify(DEVELOPER_CONTACT_URL)})throw new Error('Developer contact link is invalid');
         const tabs=document.querySelectorAll('.settings-tabs [role="tab"]').length;
+        document.querySelector('#settings-tab-general').click();
+        await wait(()=>document.querySelector('[aria-label="关闭窗口后在托盘运行"]'));
+        const desktop=await window.mokiDesktop.desktopSettings.get();
+        if(!desktop.trayAvailable)throw new Error('Tray unavailable: '+desktop.trayError);
+        document.querySelector('#settings-tab-appearance').click();
+        await wait(()=>document.querySelector('.settings-theme-options'));
         document.querySelector('.settings-theme-options [data-theme-mode="dark"]').click();
         await wait(()=>document.documentElement.dataset.colorScheme==='dark');
         document.querySelector('.settings-theme-options [data-theme-mode="system"]').click();
@@ -139,29 +188,44 @@ async function openWindow() {
         document.querySelector('#settings-tab-cache').click();
         await wait(()=>document.querySelector('#material-cache-path')?.value===${JSON.stringify(pending)});
         document.querySelector('#settings-tab-mcp').click();
+        await wait(()=>document.querySelector('[aria-label="MCP 连接方式"]'));
+        document.querySelector('.mcp-config-details').open=true;
         await wait(()=>document.querySelector('.native-settings-modal pre')?.textContent.includes('moki-whiteboard'));
+        if(!Array.from(document.querySelectorAll('button')).some(button=>button.textContent==='复制 Agent 接入说明'))throw new Error('Agent onboarding action missing');
         document.querySelector('[aria-label="关闭设置"]').click();
         await wait(()=>!document.querySelector('.native-settings-modal'));
-        return {tabs,about:true,appVersion:${JSON.stringify(APP_VERSION)},themeChanged:true,mcpConfig:true,cacheBridge:true,cachePath:initial.path,pendingPath:scheduled.pendingPath,activePathUnchanged:initial.path===scheduled.path};
+        return {tabs,about:true,appVersion:${JSON.stringify(APP_VERSION)},themeChanged:true,mcpConfig:true,agentInstructions:true,desktopSettings:true,cacheBridge:true,cachePath:initial.path,pendingPath:scheduled.pendingPath,activePathUnchanged:initial.path===scheduled.path};
       })()`);
-      if(settingsSmoke?.tabs!==3||settingsSmoke?.activePathUnchanged!==true)throw new Error('Unified settings smoke failed');
+      if(settingsSmoke?.tabs!==4||settingsSmoke?.activePathUnchanged!==true)throw new Error('Unified settings smoke failed');
     }
     let native=false;
     if(process.env.MOKI_WHITEBOARD_SMOKE_BOARD==='default')process.env.MOKI_WHITEBOARD_SMOKE_BOARD=store?.get().id;
     if(process.env.MOKI_WHITEBOARD_SMOKE_BOARD){await win.loadURL(`${localOrigin}/board/${encodeURIComponent(process.env.MOKI_WHITEBOARD_SMOKE_BOARD)}`);for(let attempt=0;attempt<50&&!native;attempt++){native=await win.webContents.executeJavaScript(`Boolean(document.querySelector('canvas.native-whiteboard-canvas')&&document.querySelector('[aria-label="插入思维导图"]'))`);if(!native)await new Promise(resolve=>setTimeout(resolve,100));}}
     const config=await (await fetch(`${localOrigin}/api/config`)).json() as {dataPath:string;mcpCommand:string;mcpEntryPath:string;mcpEnv:Record<string,string>};
-    process.stdout.write(`${JSON.stringify({ ...result,...bridge,native,settingsSmoke,fileOpenSmoke,url: win.webContents.getURL(),dataPath:config.dataPath,mcpCommand:config.mcpCommand,mcpEntryPath:config.mcpEntryPath,mcpEnv:config.mcpEnv })}\n`);
+    let lifecycleSmoke:Record<string,unknown>|undefined;
+    if(desktopSettings?.trayAvailable){
+      const previous=desktopSettings.closeToTray;desktopSettings.closeToTray=true;
+      win.close();if(win.isDestroyed()||win.isVisible())throw new Error('Close did not retain hidden window');
+      if(!(await fetch(`${localOrigin}/api/health`)).ok)throw new Error('Background service stopped');
+      await openWindow();if(!win.isVisible()||activeWindow!==win)throw new Error('Tray restore did not reuse window');
+      desktopSettings.closeToTray=previous;
+      lifecycleSmoke={trayCreated:true,closeToTray:true,backgroundService:true,restoreSameWindow:true};
+    }
+    process.stdout.write(`${JSON.stringify({ ...result,...bridge,native,settingsSmoke,fileOpenSmoke,lifecycleSmoke,url: win.webContents.getURL(),dataPath:config.dataPath,mcpCommand:config.mcpCommand,mcpEntryPath:config.mcpEntryPath,mcpEnv:config.mcpEnv })}\n`);
     const failed=!result.shell||!bridge.preload||!bridge.portable||(process.env.MOKI_WHITEBOARD_SMOKE_BOARD&&!native);
     setTimeout(() => {process.exitCode=failed?1:0;app.quit();}, 250);
   }
 }
 
 if(primary)app.whenReady().then(async () => {
+  desktopSettings=new DesktopSettings(join(app.getPath('userData'),'desktop-settings.json'),app,process.platform,app.isPackaged,process.execPath);
   installDesktopBridge();
+  createTray();
   if(process.platform==='darwin')Menu.setApplicationMenu(Menu.buildFromTemplate([{role:'appMenu'},{role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'}]));
-  await openWindow();
-  app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)void openWindow().catch(error=>{console.error(error);dialog.showErrorBox('MOKI 白板打开失败',String(error));});});
+  let login=process.argv.includes(AUTOSTART_ARGUMENT);
+  if(process.platform==='darwin'&&app.isPackaged){try{login||=app.getLoginItemSettings().wasOpenedAtLogin;}catch(error){console.warn('无法读取本次登录启动状态：',String(error));}}
+  await openWindow(!login||!desktopSettings.trayAvailable||pendingWhiteboards.pending);
+  app.on('activate',()=>{void openWindow().catch(showWindowError);});
 }).catch(async error=>{console.error(error);if(process.env.MOKI_WHITEBOARD_SMOKE!=='1')dialog.showErrorBox('MOKI 白板启动失败',String(error));await server?.close();store?.close();app.exit(1);});
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
-let closing=false;
-app.on('before-quit',event=>{if(closing||!server)return;event.preventDefault();closing=true;void server.close().finally(()=>{store?.close();app.exit(Number(process.exitCode??0));});});
+app.on("window-all-closed", () => { if (!lifecycle.exiting)void lifecycle.quit(); });
+app.on('before-quit',event=>lifecycle.beforeQuit(event));

@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {mkdir,readFile,writeFile,lstat,readdir} from 'node:fs/promises';
-import {basename,dirname,extname,join,resolve} from 'node:path';
-import type {FastifyInstance,FastifyRequest} from 'fastify';
+import {mkdir,readFile,writeFile,readdir} from 'node:fs/promises';
+import {extname,join} from 'node:path';
+import type {FastifyInstance} from 'fastify';
 import {z} from 'zod';
 import {ResourceLibraryCreateSchema,WhiteboardFolderExportSchema,type ResourceLibraryItem} from '../vendor/moki/shared/resource-library-contract.js';
 import {readWhiteboardTransferResource,restoreWhiteboardTransferResources} from '../vendor/moki/desktop/whiteboard-transfer-resources.js';

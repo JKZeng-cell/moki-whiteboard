@@ -12,8 +12,8 @@ import type {
   WhiteboardSnapshot,
 } from "./types.js";
 
-import {nativeShapeBounds,nativeShapeVisualBounds} from '../vendor/moki/whiteboard/native-whiteboard-model.js';
-import {buildMindMapTemplate,addMindMapChild,mindMapChildren,mindMapDescendantIds,synchronizeMindMapSnapshot} from '../vendor/moki/whiteboard/mind-map.js';
+import {nativeShapeVisualBounds} from '../vendor/moki/whiteboard/native-whiteboard-model.js';
+import {buildMindMapTemplate,addMindMapChild,mindMapDescendantIds,synchronizeMindMapSnapshot} from '../vendor/moki/whiteboard/mind-map.js';
 import {migrateLegacyRecords} from './native-migration.js';
 
 const DEFAULT_PAGE_ID = "page:moki";
@@ -287,10 +287,6 @@ export function alignElements(snapshot: WhiteboardSnapshot, ids: string[], mode:
     ordered.forEach(({ shape, box }) => { updates.set(shape.id, { x: shape.x, y: cursor }); cursor += box.height + gap; });
   }
   return updateElements(snapshot, [...updates].map(([id, point]) => ({ id, ...point })));
-}
-
-function numeric(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 export function shapeBounds(shape: ShapeRecord): { x: number; y: number; width: number; height: number } {

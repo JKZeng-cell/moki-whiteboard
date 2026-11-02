@@ -8,7 +8,7 @@ A local-first, open-source infinite whiteboard and MCP server for AI coding agen
 
 [![CI](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/ci.yml/badge.svg)](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-6558d3.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.7-30364d.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.8-30364d.svg)](package.json)
 
 **Agent 接入 / Agent integration:** [MCP quickstart & tool reference](docs/agent-guide.md) · [LLM-readable documentation index](llms.txt) · [8-page visual showcase](docs/showcase/README.md)
 
@@ -69,12 +69,17 @@ MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的
 - 页面系统：多页面、页面分组、跨页面内容检索与定位、页面历史版本和恢复。
 - 本地资料：文件 / 文件夹插入、素材列表、预览与重命名，可自定义素材缓存路径。
 - 外观：浅色、深色和跟随系统。
+- 桌面运行：设置 → 常规中可选择关闭窗口后在托盘运行、开机自启动；托盘提供重新打开和退出入口，自启动默认关闭。
 - 文件互通：支持 v2 `.moki` ZIP，并兼容旧 `.moki-board`、封装 JSON 和原始快照。
 - 安全写入：SQLite WAL、乐观版本冲突保护、操作审计和异常剪贴板原子校验。
 
 ## MCP 与 Agent
 
 MOKI 白板提供标准 stdio 和 Streamable HTTP 两种 MCP 连接方式，共 16 个工具，并提供 Resource 与 Prompt。
+
+在“设置 → MCP”选择连接方式，点击 **复制 Agent 接入说明**，把整段文本发给你的 Agent。说明包含本机完整配置、保留既有服务的要求及只读验证步骤；也可单独复制 JSON 配置。接入可能需要 MCP 客户端重启或授权。
+
+“设置 → 常规”控制托盘与开机自启动。关闭到托盘时，本地 HTTP / MCP 服务继续运行；完整退出请使用托盘菜单或设置中的“退出 MOKI 白板”，退出前会等待白板保存。自启动仅在打包后的 Windows / macOS 客户端可配置，系统可能需要批准或在启动应用中启用；当前 Mac 包未做 Developer ID 签名或公证，注册可能受系统限制，界面会显示实际结果。真实开机登录行为需在安装后验证。
 
 ![MCP 设置](docs/assets/screenshots/mcp-settings.png)
 
@@ -266,6 +271,7 @@ MOKI Whiteboard is a standalone React / Electron application evolved from the in
 - Pages: multiple pages, page groups, cross-page content search and navigation, and per-page version history and restoration.
 - Local assets: insert files / folders, locate and preview assets, rename them, and configure the asset-cache directory.
 - Appearance: light, dark, or follow the system theme.
+- Desktop lifecycle: optional close-to-tray, tray Open / Quit actions, and opt-in login startup under Settings → General. Startup is available in packaged Windows / macOS apps and reports OS approval or registration failures; unsigned Mac builds may be restricted. A real login/reboot needs verification after installation.
 - Interoperability: v2 `.moki` ZIP archives, legacy `.moki-board` files, wrapped JSON, and raw snapshots.
 - Safer writes: SQLite WAL, optimistic version-conflict protection, operation auditing, and atomic clipboard validation.
 

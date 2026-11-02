@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-02",
+  "method": "built-in imagegen plus deterministic app-icon export",
+  "source": "build/moki-whiteboard-artwork.png",
+  "png": {
+    "width": 1024,
+    "height": 1024,
+    "hasAlpha": true,
+    "transparentMarginPixels": 32,
+    "strayPixels": 0,
+    "sha256": "df26eb78d28a1a78049f83fee7fd9998bad526200799eb4c8b855d2d5333cc6d"
+  },
+  "ico": {
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ],
+    "embeddedPayloadsVerified": true,
+    "sha256": "03250b79579c1a16a431872092e8e33d2a82b59aa3b856410248bbb36f772856"
+  },
+  "showcaseMatches": true,
+  "builtWebResourcesMatch": true,
+  "macOS": "Packaging regenerates PNG first, then iconutil builds ICNS on macOS; not generated on this Windows host.",
+  "installerRebuilt": false,
+  "variant": "high-five gesture with empty palm, m-like finger contours and two contour breaks",
+  "desktopHeaderLoaded": true,
+  "desktopScreenshot": "docs/design/icon-in-app.png"
+}

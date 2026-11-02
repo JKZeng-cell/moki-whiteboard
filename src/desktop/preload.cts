@@ -1,5 +1,6 @@
 import {contextBridge,ipcRenderer,webUtils} from 'electron';
 contextBridge.exposeInMainWorld('mokiDesktop',{
+ desktopSettings:{get:()=>ipcRenderer.invoke('moki:desktop-get'),set:(update:unknown)=>ipcRenderer.invoke('moki:desktop-set',update),quit:()=>ipcRenderer.invoke('moki:desktop-quit')},
  resourceCache:{get:()=>ipcRenderer.invoke('moki:cache-get'),set:(path:string|null)=>ipcRenderer.invoke('moki:cache-set',path)},
  getPathForFile:(file:File)=>webUtils.getPathForFile(file),
  openLocalPath:(path:string)=>ipcRenderer.invoke('moki:open-path',path),

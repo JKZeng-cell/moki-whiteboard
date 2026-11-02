@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { resolve } from "node:path";
 import {fileURLToPath} from 'node:url';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WhiteboardStore } from "../server/store.js";

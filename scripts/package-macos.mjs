@@ -13,6 +13,7 @@ async function run(args){
  const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
  if(code!==0)throw new Error(`macOS packaging command failed (${code})`);
 }
+await run([join(root,'scripts/build-whiteboard-icon.mjs')]);
 await run([join(root,'scripts/build-mac-icon.mjs')]);
 await run([join(root,'node_modules/vite/bin/vite.js'),'build']);
 await run([join(root,'node_modules/typescript/bin/tsc'),'-p','tsconfig.build.json']);

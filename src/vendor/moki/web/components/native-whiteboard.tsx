@@ -119,6 +119,7 @@ export {
 declare global {
   interface Window {
     mokiDesktop?: {
+      desktopSettings?: import('../../../../shared/desktop-settings-contract.js').DesktopSettingsBridge;
       resourceCache?: import('../../../../shared/resource-cache-contract.js').ResourceCacheBridge;
       appearance?: {
         setColorSchemePreference(preference: "system" | "light" | "dark"): Promise<boolean>;
