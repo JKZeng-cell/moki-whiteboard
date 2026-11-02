@@ -67,7 +67,9 @@ assert.equal(opening.packaged, true);
 assert.equal(opening.fileOpenSmoke.startup, true);
 assert.equal(opening.fileOpenSmoke.runtimeNotification, true);
 const previous = await api('releases/tags/v0.1.7');
-const before = await api(`releases/tags/${manifest.tag}`);
+// A draft may not have a Git tag yet; resolve it from the authenticated list.
+const before = (await api('releases?per_page=100')).find(release => release.tag_name === manifest.tag);
+assert.ok(before, 'Create the release draft and upload Windows binaries first');
 assert.equal(before.target_commitish, manifest.sourceCommit);
 assert.equal(before.prerelease, false);
 function verifyAsset(asset, file) {
@@ -113,14 +115,14 @@ for (const file of upload) {
   else await exec('gh', ['release', 'upload', manifest.tag, file.path, '--repo', repo], { timeout: 300000 });
 }
 const expected = [...manifest.files, ...upload.filter(file => !manifest.files.some(value => value.name === file.name))];
-const staged = await api(`releases/tags/${manifest.tag}`);
+const staged = await api(`releases/${before.id}`);
 assert.equal(staged.id, before.id);
 for (const file of expected) verifyAsset(staged.assets.find(asset => asset.name === file.name), file);
 assert.equal(staged.assets.length, expected.length, 'Unexpected release assets');
 const notes = await readFile('docs/releases/v0.1.8-notes.md', 'utf8');
 if (!before.draft) assert.equal(before.body.trim(), notes.trim(), 'Published notes changed');
 await exec('gh', ['release', 'edit', manifest.tag, '--repo', repo, '--notes-file', 'docs/releases/v0.1.8-notes.md', '--draft=false', '--latest']);
-const after = await api(`releases/tags/${manifest.tag}`);
+const after = await api(`releases/${before.id}`);
 assert.equal(after.draft, false);
 assert.equal(after.body.trim(), notes.trim());
 assert.equal((await api(`git/ref/tags/${manifest.tag}`)).object.sha, manifest.sourceCommit);
