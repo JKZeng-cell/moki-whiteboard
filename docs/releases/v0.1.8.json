@@ -1,0 +1,42 @@
+{
+  "repository": "JKZeng-cell/moki-whiteboard",
+  "tag": "v0.1.8",
+  "version": "0.1.8",
+  "sourceCommit": "7627f2245948c4ec170a9d1e008f296a131046a2",
+  "sourceRunId": 41400391097,
+  "macRunId": 41400393289,
+  "artifactId": 13121640410,
+  "artifactName": "MOKI-Whiteboard-macOS-arm64",
+  "files": [
+    {
+      "platform": "Windows-x64",
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe",
+      "bytes": 213631536,
+      "sha256": "9799b5b6b375cd77e0a7f4005bde1b7003442e959d5fb546939e3f2a22784fca"
+    },
+    {
+      "platform": "Windows-x64",
+      "name": "MOKI-Whiteboard-0.1.8-Windows-x64.zip",
+      "bytes": 279825644,
+      "sha256": "fa190391e32ce6e09990a38d7c7c76ccfc8aab9b66afbe8ea8f7cfd4d063ef56"
+    },
+    {
+      "platform": "Windows-x64",
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap",
+      "bytes": 222552,
+      "sha256": "8d4326b52bf2379ec0fd322401488d9d325d4b6329c14a849f1d5d2184028964"
+    },
+    {
+      "platform": "macOS-arm64",
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.dmg",
+      "bytes": 253210889,
+      "sha256": "d0f22df22f4659ffa0ede4a210370b5657d7aa2cd3d0e09bcbcc47df24b74139"
+    },
+    {
+      "platform": "macOS-arm64",
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.zip",
+      "bytes": 258508790,
+      "sha256": "548f98e5621e8c4ed5f46d669117bc6b87c64f696b36b630373ea5420bf4fbb8"
+    }
+  ]
+}

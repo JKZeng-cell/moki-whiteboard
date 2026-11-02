@@ -1,0 +1,40 @@
+name: Publish verified Windows and macOS release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-verified-0.1.8
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Download the pinned Apple Silicon build
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 41400393289
+          artifact-ids: 13121640410
+          path: verified-release
+          merge-multiple: true
+      - name: Verify source, native reports, and all release bytes
+        run: node scripts/publish-verified-release.mjs verified-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verified-release-publication-report
+          path: verified-release/github-release-verification.json
+          if-no-files-found: ignore
