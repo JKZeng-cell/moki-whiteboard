@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {readFile,writeFile,stat} from 'node:fs/promises';
+import {readFile,writeFile,stat,readdir} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {join,resolve,basename} from 'node:path';
@@ -10,15 +10,26 @@ import {join,resolve,basename} from 'node:path';
 const exec=promisify(execFile),root=resolve(process.argv[2]),repo=process.env.GITHUB_REPOSITORY;
 assert.equal(repo,'JKZeng-cell/moki-whiteboard');
 const version=JSON.parse(await readFile('package.json','utf8')).version;
-const tag=process.env.RELEASE_TAG,sourceCommit=process.env.GITHUB_SHA;
+const tag=process.env.RELEASE_TAG,publicationCommit=process.env.GITHUB_SHA;
 assert.match(tag??'',new RegExp(`^v${version.replaceAll('.','\\.')}-r[1-9][0-9]*$`));
-assert.match(sourceCommit??'',/^[a-f0-9]{40}$/u);
-assert.equal((await exec('git',['rev-parse','HEAD'])).stdout.trim(),sourceCommit);
+assert.match(publicationCommit??'',/^[a-f0-9]{40}$/u);
+assert.equal((await exec('git',['rev-parse','HEAD'])).stdout.trim(),publicationCommit);
 const gh=async args=>(await exec('gh',args,{timeout:20*60_000,maxBuffer:8*1024*1024})).stdout;
 const api=async path=>JSON.parse(await gh(['api',`repos/${repo}/${path}`]));
+let sourceCommit=publicationCommit,buildRun=Number(process.env.GITHUB_RUN_ID);
+if(process.env.BUILD_RUN_ID){
+ buildRun=Number(process.env.BUILD_RUN_ID);assert.ok(Number.isSafeInteger(buildRun)&&buildRun>0);
+ const run=await api(`actions/runs/${buildRun}`);assert.equal(run.path,'.github/workflows/desktop-release.yml');assert.equal(run.status,'completed');sourceCommit=run.head_sha;assert.match(sourceCommit,/^[a-f0-9]{40}$/u);
+ await exec('git',['merge-base','--is-ancestor',sourceCommit,publicationCommit]);
+ const jobs=(await api(`actions/runs/${buildRun}/jobs?per_page=100`)).jobs;
+ for(const name of ['windows','macos'])assert.equal(jobs.find(job=>job.name===name)?.conclusion,'success',`Native ${name} build must have passed`);
+}
 const before=await api('releases?per_page=100');assert.ok(!before.some(item=>item.tag_name===tag),'Revision tag already has a Release; choose a new tag instead of overwriting');
 const oldAssets=before.map(item=>({tag:item.tag_name,id:item.id,assets:item.assets.map(asset=>({id:asset.id,name:asset.name,size:asset.size,digest:asset.digest}))}));
-const read=async(platform,name)=>JSON.parse(await readFile(join(root,platform,name),'utf8'));
+async function walk(directory){const files=[];for(const item of await readdir(directory,{withFileTypes:true})){assert.equal(item.isSymbolicLink(),false);const path=join(directory,item.name);if(item.isDirectory())files.push(...await walk(path));else files.push(path);}return files;}
+const platformFiles={windows:await walk(join(root,'windows')),macos:await walk(join(root,'macos'))};
+function find(platform,name){const matches=platformFiles[platform].filter(path=>basename(path)===name);assert.equal(matches.length,1,`Expected one ${platform}/${name}`);return matches[0];}
+const read=async(platform,name)=>JSON.parse(await readFile(find(platform,name),'utf8'));
 const nativeChecks={};
 for(const platform of ['windows','macos']){
  const local=await read(platform,'local-verification.json'),opening=await read(platform,'file-opening-verification.json'),source=await read(platform,'source-verification.json');
@@ -35,14 +46,14 @@ const files=[];
 async function digest(path){const hash=createHash('sha256');for await(const chunk of createReadStream(path))hash.update(chunk);return hash.digest('hex');}
 for(const [platform,entries] of [['windows',win.files],['macos',mac.files]])for(const entry of entries){
  assert.equal(basename(entry.name),entry.name);assert.match(entry.name,/^MOKI-Whiteboard-[A-Za-z0-9.-]+$/u);
- const path=join(root,platform,entry.name),size=(await stat(path)).size;assert.equal(size,entry.bytes);assert.equal(await digest(path),entry.sha256);files.push({platform,name:entry.name,bytes:size,sha256:entry.sha256,path});
+ const path=find(platform,entry.name),size=(await stat(path)).size;assert.equal(size,entry.bytes);assert.equal(await digest(path),entry.sha256);files.push({platform,name:entry.name,bytes:size,sha256:entry.sha256,path});
 }
 assert.equal(files.length,5);
 const upload=[...files];
 for(const [suffix,entries] of [['',files],['-Windows-x64',files.filter(item=>item.platform==='windows')],['-macOS-arm64',files.filter(item=>item.platform==='macos')]]){
  const name=`SHA256SUMS-${version}${suffix}.txt`,path=join(root,name);await writeFile(path,entries.map(item=>`${item.sha256}  ${item.name}`).join('\n')+'\n');upload.push({name,path,bytes:(await stat(path)).size,sha256:await digest(path)});
 }
-const verification={version,tag,sourceCommit,workflowRun:Number(process.env.GITHUB_RUN_ID),nativeChecks,signing:{windows:'unsigned',macOS:mac.signing,developerIDSigned:mac.developerIDSigned,notarized:mac.notarized},files:files.map(({path,...item})=>item)};
+const verification={version,tag,sourceCommit,publicationCommit,workflowRun:buildRun,publicationRun:Number(process.env.GITHUB_RUN_ID),nativeChecks,signing:{windows:'unsigned',macOS:mac.signing,developerIDSigned:mac.developerIDSigned,notarized:mac.notarized},files:files.map(({path,...item})=>item)};
 const verificationName=`verification-${tag}.json`,verificationPath=join(root,verificationName);await writeFile(verificationPath,JSON.stringify(verification,null,2));upload.push({name:verificationName,path:verificationPath,bytes:(await stat(verificationPath)).size,sha256:await digest(verificationPath)});
 await gh(['release','create',tag,'--repo',repo,'--target',sourceCommit,'--draft','--title',`MOKI Whiteboard ${version} · 2026-11-04 update`,'--notes-file','docs/releases/v0.1.8-r2-notes.md']);
 for(const file of upload)await gh(['release','upload',tag,file.path,'--repo',repo]);

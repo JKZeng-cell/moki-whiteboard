@@ -1,0 +1,55 @@
+name: Publish existing verified desktop update
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Desktop update workflow run with both native builds successful
+        required: true
+      tag:
+        description: New release revision tag
+        required: true
+        default: v0.1.8-r2
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run }}
+          name: verified-Windows-x64
+          path: verified-release/windows
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run }}
+          name: verified-macOS-arm64
+          path: verified-release/macos
+      - run: node scripts/publish-desktop-update.mjs verified-release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-publication-verification
+          path: verified-release/published-release.json
+          if-no-files-found: ignore
