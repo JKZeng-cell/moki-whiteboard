@@ -3,7 +3,6 @@ import { normalizeImportedSnapshot } from "./board.js";
 import type { ShapeRecord, WhiteboardSnapshot } from "./types.js";
 
 export const WHITEBOARD_TRANSFER_MIME = "application/vnd.moki.whiteboard+zip";
-const MAX_BYTES = 256 * 1024 * 1024;
 
 function safeName(value: string): string { return value.replace(/[\\/:*?"<>|]+/gu, "-").trim() || "MOKI-白板"; }
 
@@ -60,12 +59,10 @@ export function createPortableWhiteboard(snapshot: WhiteboardSnapshot, options: 
   const manifest = { format: "moki-whiteboard", version: 2, exportedAt: new Date().toISOString(), ...(options.pageId ? { pageId: options.pageId } : {}), ...(options.pageName ? { pageName: options.pageName } : {}), snapshot: portable, assets, resources };
   archive["manifest.json"] = strToU8(JSON.stringify(manifest));
   const bytes = zipSync(archive, { level: 6 });
-  if (bytes.byteLength > MAX_BYTES) throw new Error("白板文件超过 256 MB，无法导出");
   return { bytes, fileName: `${safeName(options.title)}.moki` };
 }
 
 export function importPortableWhiteboard(bytes: Uint8Array): { snapshot: WhiteboardSnapshot; pageName?: string; format: "moki-v2" | "moki-legacy" | "snapshot" } {
-  if (bytes.byteLength > MAX_BYTES) throw new Error("白板文件超过 256 MB，无法导入");
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
     const archive = unzipSync(bytes);
     const manifestBytes = archive["manifest.json"];

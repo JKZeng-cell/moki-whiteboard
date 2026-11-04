@@ -5,6 +5,7 @@ import {
   WhiteboardSnapshotSchema,
 } from "../../domain/whiteboard.js";
 import type { WhiteboardRepository } from "../repositories/whiteboard-repository.js";
+import {WHITEBOARD_HTTP_BODY_LIMIT} from '../../shared/whiteboard-transfer-limits.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object";
@@ -14,9 +15,7 @@ function formatMegabytes(bytes: number): number {
   return Math.max(1, Math.ceil(bytes / 1024 / 1024));
 }
 
-export const MAX_WHITEBOARD_ASSET_BYTES = 200 * 1024 * 1024;
-const MAX_WHITEBOARD_ASSET_UPLOAD_BYTES =
-  Math.ceil(MAX_WHITEBOARD_ASSET_BYTES * 4 / 3) + 2 * 1024 * 1024;
+const MAX_WHITEBOARD_ASSET_UPLOAD_BYTES = WHITEBOARD_HTTP_BODY_LIMIT;
 const WHITEBOARD_ASSET_CONTENT_TYPE = "application/x-moki-whiteboard-asset";
 const MAX_WHITEBOARD_LINK_METADATA_BYTES = 512 * 1024;
 
@@ -222,9 +221,6 @@ export async function registerWhiteboardRoutes(
         ? { mimeType: binaryMimeType, content: rawContent }
         : readImageDataUrl(body.source);
       if (!image) return reply.code(400).send({ error: "白板媒体数据格式无效" });
-      if (image.content.byteLength > MAX_WHITEBOARD_ASSET_BYTES) {
-        return reply.code(413).send({ error: "白板媒体文件不能超过 200MB" });
-      }
       const rawWidth = Number(firstHeader(request.headers["x-moki-asset-width"]));
       const rawHeight = Number(firstHeader(request.headers["x-moki-asset-height"]));
       const width = Number.isFinite(rawWidth) && rawWidth > 0
@@ -280,13 +276,9 @@ export async function registerWhiteboardRoutes(
       if (!response?.ok) return reply.code(502).send({ error: `网络图片下载失败：HTTP ${response?.status ?? 0}` });
       const mimeType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
       if (!mimeType?.startsWith("image/")) return reply.code(400).send({ error: "该地址返回的内容不是图片" });
-      const declaredSize = Number(response.headers.get("content-length"));
-      if (Number.isFinite(declaredSize) && declaredSize > MAX_WHITEBOARD_ASSET_BYTES) {
-        return reply.code(413).send({ error: "网络图片不能超过 200MB" });
-      }
       const content = Buffer.from(await response.arrayBuffer());
-      if (!content.byteLength || content.byteLength > MAX_WHITEBOARD_ASSET_BYTES) {
-        return reply.code(content.byteLength ? 413 : 400).send({ error: content.byteLength ? "网络图片不能超过 200MB" : "网络图片内容为空" });
+      if (!content.byteLength) {
+        return reply.code(400).send({ error: "网络图片内容为空" });
       }
       const saved = repository(request).saveAsset(content, {
         mimeType,

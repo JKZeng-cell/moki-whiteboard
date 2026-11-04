@@ -27,7 +27,7 @@ export class WhiteboardDocuments {
  async read(path:string):Promise<DesktopWhiteboardOpenRequest>{
   if(!isWhiteboardPath(path))throw new Error('请选择 MOKI 白板文件');
   const canonical=await realpath(path),info=await stat(canonical);
-  if(!info.isFile()||info.size>256*1024*1024)throw new Error('请选择不超过 256 MB 的白板文件');
+  if(!info.isFile())throw new Error('请选择 MOKI 白板文件');
   const bytes=await readFile(canonical),hash=fileContentVersion(bytes);
   let bound=this.store.db.prepare('SELECT * FROM whiteboard_documents WHERE path_key=?').get(key(canonical)) as Binding|undefined;
   let replaceBoardVersion:number|undefined;
@@ -43,7 +43,7 @@ export class WhiteboardDocuments {
   // Tickets are short-lived capabilities; bound paths are never accepted from HTTP.
   this.tickets.set(token,{path:canonical,hash,...(bound?{boardId:bound.board_id}:{})});
   if(this.tickets.size>100)this.tickets.delete(this.tickets.keys().next().value!);
-  return {name:basename(path),bytes:new Uint8Array(bytes),documentToken:token,...(bound&&replaceBoardVersion!==undefined?{replaceBoardId:bound.board_id,replaceBoardVersion}: {})};
+  return {name:basename(path),bytes,documentToken:token,...(bound&&replaceBoardVersion!==undefined?{replaceBoardId:bound.board_id,replaceBoardVersion}: {})};
  }
  async bind(token:string,boardId:string,expectedVersion:number){
   const ticket=this.tickets.get(token);if(!ticket)throw new Error('文件打开请求已过期，请重新打开');

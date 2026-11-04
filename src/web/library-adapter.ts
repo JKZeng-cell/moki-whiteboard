@@ -1,6 +1,7 @@
 import {apiFetch} from '../vendor/moki/web/lib/api-fetch.js';
 import type {DesktopWhiteboardTransferResource,DesktopWhiteboardRestoredResource,DesktopWhiteboardReadResourceResult} from '../vendor/moki/shared/desktop-whiteboard-transfer-contract.js';
 import type {ResourceLibraryItem} from '../vendor/moki/shared/resource-library-contract.js';
+import {RESOURCE_TRANSFER_MIME,resourceTransferParts,readResourceTransfer} from '../shared/resource-transfer-binary.js';
 export async function uploadLibraryFile(file:File,parentId?:string){const response=await apiFetch('/api/library/upload',{method:'POST',headers:{'content-type':'application/x-moki-library-file','x-moki-file-name':encodeURIComponent(file.name),...(parentId?{'x-moki-parent-id':parentId}:{})},body:file});const item=await response.json();if(!response.ok)throw new Error(item.error);return item as ResourceLibraryItem;}
 export async function importLocalLibrary(folder=false):Promise<ResourceLibraryItem[]>{
  const selected=folder?await window.mokiDesktop?.selectLocalFolder?.():await window.mokiDesktop?.selectLocalFile?.();
@@ -12,10 +13,20 @@ export async function importLocalLibrary(folder=false):Promise<ResourceLibraryIt
  for(const file of files){let parentId:string|undefined;const path=folder?file.webkitRelativePath.split('/').slice(0,-1):[];let prefix='';for(const part of path){prefix+='/'+part;if(!folders.has(prefix)){const response=await apiFetch('/api/library/items',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:'folder',name:part,parentId:parentId??null,tags:[]})});const item=await response.json() as ResourceLibraryItem;if(!response.ok)throw new Error((item as unknown as {error:string}).error);folders.set(prefix,item);if(!parentId)roots.push(item);}parentId=folders.get(prefix)?.id;}const item=await uploadLibraryFile(file,parentId);created.push(item);}
  return folder?roots:created;
 }
-function base64(bytes:Uint8Array){let text='';for(let start=0;start<bytes.length;start+=32768)text+=String.fromCharCode(...bytes.subarray(start,start+32768));return btoa(text);}
 export function installBrowserResourceBridge(){
  if(window.mokiDesktop)return;
- window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,openExternalUrl:async url=>{window.open(url,'_blank','noopener');return true;},copyText:async text=>{await navigator.clipboard.writeText(text);return true;},whiteboardFiles:{hasPending:async()=>false,consume:async()=>null,onPending:()=>()=>{},readResource:async input=>{const response=await apiFetch('/api/library/resources/read',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});const result=await response.json();if(!response.ok)throw new Error(result.error);return {...result,files:result.files.map((file:{relativePath:string;base64:string})=>({relativePath:file.relativePath,bytes:Uint8Array.from(atob(file.base64),char=>char.charCodeAt(0))}))} as DesktopWhiteboardReadResourceResult;},restoreResources:async(resources:DesktopWhiteboardTransferResource[])=>{const response=await apiFetch('/api/library/resources/restore',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(resources.map(resource=>({...resource,files:resource.files.map(file=>({relativePath:file.relativePath,base64:base64(file.bytes)}))})))});const result=await response.json();if(!response.ok)throw new Error(result.error);return result as DesktopWhiteboardRestoredResource[];}}};
+ window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,openExternalUrl:async url=>{window.open(url,'_blank','noopener');return true;},copyText:async text=>{await navigator.clipboard.writeText(text);return true;},whiteboardFiles:{
+  hasPending:async()=>false,consume:async()=>null,onPending:()=>()=>{},
+  readResource:async input=>{
+   const response=await apiFetch('/api/library/resources/read',{method:'POST',headers:{'content-type':'application/json',accept:RESOURCE_TRANSFER_MIME},body:JSON.stringify(input)});
+   if(!response.ok)throw new Error((await response.json()).error);
+   const result=readResourceTransfer(new Uint8Array(await response.arrayBuffer()))[0];if(!result)throw new Error('附件传输为空');return result as DesktopWhiteboardReadResourceResult;
+  },
+  restoreResources:async(resources:DesktopWhiteboardTransferResource[])=>{
+   const response=await apiFetch('/api/library/resources/restore',{method:'POST',headers:{'content-type':RESOURCE_TRANSFER_MIME},body:new Blob(resourceTransferParts(resources) as Uint8Array<ArrayBuffer>[])});
+   const result=await response.json();if(!response.ok)throw new Error(result.error);return result as DesktopWhiteboardRestoredResource[];
+  },
+ }};
  window.mokiDesktop.openLocalPath=async source=>{
    if(/^https?:\/\//i.test(source)){window.open(source,'_blank','noopener');return true;}
    const response=await apiFetch('/api/library/items');const items=await response.json() as ResourceLibraryItem[];

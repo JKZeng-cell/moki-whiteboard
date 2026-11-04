@@ -17,6 +17,8 @@ import { registerLibraryRoutes } from './library-routes.js';
 import {FileEditConflict} from '../vendor/moki/documents/file-edit-guard.js';
 import {ResourceCache} from './resource-cache.js';
 import {APP_VERSION} from './app-metadata.js';
+import {registerLanSharing} from './lan-sharing.js';
+import {WHITEBOARD_HTTP_BODY_LIMIT} from '../vendor/moki/shared/whiteboard-transfer-limits.js';
 
 const IdParams = z.object({ id: z.string().min(1) });
 const PageParams = z.object({ id: z.string().min(1), pageId: z.string().min(1) });
@@ -24,7 +26,7 @@ const GroupParams = z.object({ id: z.string().min(1), groupId: z.string().min(1)
 const actor = (headers: Record<string, unknown>) => typeof headers["x-moki-actor"] === "string" ? headers["x-moki-actor"].slice(0, 100) : "local-ui";
 
 export async function createApp(options: { store: WhiteboardStore; resourceCache?:ResourceCache;webRoot?: string;mcpRuntime?:{command:string;env:Record<string,string>;entryPath?:string} }) {
-  const app = Fastify({ logger: false, bodyLimit: 100 * 1024 * 1024 });
+  const app = Fastify({ logger: false, bodyLimit: WHITEBOARD_HTTP_BODY_LIMIT });
   const { store } = options;
   store.db.exec('CREATE TABLE IF NOT EXISTS native_agent_context (board_id TEXT PRIMARY KEY,context_json TEXT NOT NULL)');
   const cache=options.resourceCache??new ResourceCache(store);
@@ -32,6 +34,7 @@ export async function createApp(options: { store: WhiteboardStore; resourceCache
   registerLibraryRoutes(app, store,cache);
   registerThumbnailRoutes(app,store);
   registerMcpRoutes(app,store);
+  await registerLanSharing(app,store,options.webRoot??resolve(process.cwd(),'dist/web'));
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof VersionConflictError) return reply.code(409).send({ error: error.message, currentVersion: error.currentVersion });

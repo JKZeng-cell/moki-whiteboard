@@ -3,6 +3,7 @@ import {readWhiteboardTransferResource} from '../vendor/moki/desktop/whiteboard-
 import type {ResourceLibraryItem} from '../vendor/moki/shared/resource-library-contract.js';
 import {shapes} from '../core/board.js';
 import type {WhiteboardStore} from './store.js';
+import {ResourceCache} from './resource-cache.js';
 
 /** Use the workbench archive writer, including native assets and mapped folders. */
 export async function exportBoard(store:WhiteboardStore,boardId:string){
@@ -25,7 +26,7 @@ export async function exportBoard(store:WhiteboardStore,boardId:string){
  const fetcher:typeof fetch=async(input,init)=>{
   const value=String(input),url=new URL(value,'http://127.0.0.1');
   const asset=/^\/api\/whiteboard\/assets\/([^/]+)$/.exec(url.pathname);
-  if(asset){const row=store.db.prepare('SELECT mime_type,content FROM whiteboard_assets WHERE id=?').get(decodeURIComponent(asset[1]!));return row?new Response(new Uint8Array(row.content as Uint8Array),{headers:{'content-type':String(row.mime_type)}}):new Response(null,{status:404});}
+  if(asset){const id=decodeURIComponent(asset[1]!),row=store.db.prepare('SELECT mime_type,content,byte_size FROM whiteboard_assets WHERE id=?').get(id);return row?new Response(new ResourceCache(store).readAsset(id,row.content as Uint8Array,Number(row.byte_size)) as Uint8Array<ArrayBuffer>,{headers:{'content-type':String(row.mime_type)}}):new Response(null,{status:404});}
   if(!/^(?:data:|https?:)/i.test(value))throw new Error('不支持的白板资源地址');
   return fetch(input,init);
  };

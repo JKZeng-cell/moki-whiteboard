@@ -1,3 +1,4 @@
+import {rememberedWhiteboardPage} from '../lib/whiteboard-view-memory.js';
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -174,7 +175,7 @@ type MeasuredShape = {
   centerY: number;
 };
 
-const MAX_WHITEBOARD_FILE_BYTES = 200 * 1024 * 1024;
+const MAX_WHITEBOARD_FILE_BYTES = Infinity;
 const DEFAULT_CANVAS_INSERT_SIZE = 220;
 const MIN_CANVAS_INSERT_SIZE = 140;
 
@@ -1477,7 +1478,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
           return;
         }
         const requestedUrlPageId = new URLSearchParams(window.location.search).get("pageId") ?? undefined;
-        const requestedPageId = initialPageIdRef.current ?? requestedUrlPageId;
+        const requestedPageId = initialPageIdRef.current ?? requestedUrlPageId ?? rememberedWhiteboardPage(location.pathname);
         const requestedSnapshot = value.snapshot
           ? activateWhiteboardPage(value.snapshot, requestedPageId)
           : null;
@@ -2152,7 +2153,6 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       editor.markHistoryStoppingPoint?.("workbench library insert");
       for (const [index, item] of imageItems.entries()) {
         const file = await getResourceLibraryImageFile(item);
-        if (file.size > MAX_WHITEBOARD_FILE_BYTES) throw new Error(`图片文件不能超过 200MB：${item.name}`);
         await editor.putExternalContent({
           type: "files",
           files: [file],
@@ -2242,18 +2242,6 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         if (throwOnError) throw new Error("请选择图片或视频文件");
         return;
       }
-      const oversized = imageFiles.find(
-        (file) => file.size > MAX_WHITEBOARD_FILE_BYTES,
-      );
-      if (oversized) {
-        setError(
-          `媒体文件不能超过 200MB：${oversized.name}`,
-        );
-        if (throwOnError) {
-          throw new Error(`媒体文件不能超过 200MB：${oversized.name}`);
-        }
-        return;
-      }
       const metrics = getCanvasInsertMetrics(editor);
       const insertionPoint = point ?? {
         x: metrics.x + metrics.size / 2,
@@ -2291,11 +2279,6 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       !isDirectory && isDroppedPreviewableMedia(file),
     );
     const mapped = items.filter((item) => !previewable.includes(item));
-    const oversized = previewable.find(({ file }) => file.size > MAX_WHITEBOARD_FILE_BYTES);
-    if (oversized) {
-      setError(`白板媒体文件不能超过 200MB：${oversized.file.name}`);
-      return;
-    }
     try{for(const item of mapped){if(!item.path&&!item.isDirectory){const uploaded=await uploadLibraryFile(item.file);if(!uploaded.target)throw new Error('本地文件没有可用路径');item.path=uploaded.target;}}}catch(reason){setError(reason instanceof Error?reason.message:'本地文件上传失败');return;}
     const unavailable = mapped.find((item) => !item.path);
     if (unavailable) {
@@ -3114,6 +3097,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
               />
               <NativeWhiteboard
                 store={store}
+                viewStateKey={location.pathname}
                 onMount={handleMount}
                 onImageFiles={insertImageFiles}
                 onLocalFiles={insertDroppedLocalItems}

@@ -38,6 +38,7 @@ import {
   Play,
   Plus,
   Redo2,
+  RotateCcw,
   Search,
   StepBack,
   StepForward,
@@ -47,6 +48,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type { WhiteboardSnapshot } from "../../domain/whiteboard.js";
+import {browserPageViews,type PageViewMemory} from '../lib/whiteboard-view-memory.js';
 import { apiFetch } from "../lib/api-fetch.js";
 import {
   WHITEBOARD_MIN_ZOOM,
@@ -1340,7 +1342,7 @@ function drawNativeMediaCard(
   context.strokeStyle = video ? "#30364d" : "#dfe2ec";
   context.lineWidth = 1.5;
   context.beginPath();
-  context.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, 16);
+  context.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, video ? 0 : 16);
   context.fill();
   context.stroke();
   context.fillStyle = video ? "rgba(255,255,255,.92)" : "#242838";
@@ -1624,6 +1626,14 @@ export class NativeWhiteboardEditor {
   private viewport = { x: 0, y: 0, width: 1000, height: 700, zoom: 1 };
   private refresh?: () => void;
   private cameraChange?: (camera: { x: number; y: number; zoom: number }) => void;
+  private viewMemory?:PageViewMemory;
+  attachViewMemory(memory:PageViewMemory):void{this.viewMemory=memory;}
+  restoreCurrentPageView():void{
+    const view=this.viewMemory?.read(this.getCurrentPageId());
+    if(view){this.setViewport(view);this.cameraChange?.(view);this.refresh?.();}
+    else this.fitCurrentPage();
+  }
+  resetView():void{const view={x:0,y:0,zoom:1};this.setViewport(view);this.cameraChange?.(view);this.refresh?.();}
   private preloadImagesHandler?: (sources: string[]) => Promise<void>;
   private cachePreviewImageHandler?: (source: string, image: HTMLImageElement) => void;
 
@@ -1663,6 +1673,7 @@ export class NativeWhiteboardEditor {
 
   setViewport(value: Partial<typeof this.viewport>): void {
     this.viewport = { ...this.viewport, ...value };
+    this.viewMemory?.write(this.getCurrentPageId(),{x:this.viewport.x,y:this.viewport.y,zoom:this.viewport.zoom});
   }
 
   getViewportPageBounds(): NativeBounds {
@@ -2427,11 +2438,13 @@ export class NativeWhiteboardEditor {
 
   setCurrentPage(id: string): void {
     if (this.store.snapshot.document.store[id]?.typeName !== "page") return;
+    this.viewMemory?.write(this.getCurrentPageId(),{x:this.viewport.x,y:this.viewport.y,zoom:this.viewport.zoom});
     this.store.mutate((snapshot) => {
       snapshot.session = { ...(snapshot.session && typeof snapshot.session === "object" ? snapshot.session : {}), currentPageId: id };
     }, "session");
     this.selected.clear();
-    this.fitCurrentPage();
+    this.viewMemory?.activate?.(id);
+    this.restoreCurrentPageView();
   }
 
   createPage(): string {
@@ -4009,6 +4022,8 @@ function NativeGifPlayer({ src, selected }: { src: string; selected: boolean }) 
 
 export function NativeWhiteboard({
   store,
+  viewStateKey,
+  readOnly=false,
   onMount,
   maxAssetSize: _maxAssetSize,
   color = "black",
@@ -4033,6 +4048,8 @@ export function NativeWhiteboard({
   },
 }: {
   store: NativeWhiteboardStore;
+  viewStateKey?:string;
+  readOnly?:boolean;
   onMount?: (editor: NativeWhiteboardEditor) => void;
   maxAssetSize?: number;
   color?: NativeCanvasColor;
@@ -4069,7 +4086,10 @@ export function NativeWhiteboard({
       cache.delete(candidate[0]);
     }
   }, []);
-  const cameraRef = useRef<Camera>({ x: 0, y: 0, zoom: 1 });
+  const pageViews=useMemo(()=>browserPageViews(viewStateKey),[viewStateKey]);
+  const initialPage=String((store.snapshot.session as {currentPageId?:string}|undefined)?.currentPageId??whiteboardPages(store.snapshot)[0]?.id??'');
+  const cameraRef = useRef<Camera>(pageViews.read(initialPage)??{ x: 0, y: 0, zoom: 1 });
+  const viewReady=useRef(false);
   const actionRef = useRef<PointerAction | undefined>(undefined);
   const draftRef = useRef<NativePoint[]>([]);
   const penDraftRef = useRef<NativeBezierAnchor[]>([]);
@@ -4193,6 +4213,8 @@ export function NativeWhiteboard({
     drawAgainRef.current();
   }, [trimImageCache]);
   const editor = useMemo(() => new NativeWhiteboardEditor(store), [store]);
+  editor.attachViewMemory({...pageViews,write:(page,view)=>{if(viewReady.current)pageViews.write(page,view);}});
+  useEffect(()=>{if(readOnly){editor.select();editor.setCurrentTool('hand');}},[editor,readOnly]);
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   editor.attachRefresh(refresh);
@@ -4206,6 +4228,7 @@ export function NativeWhiteboard({
 
   useEffect(() => {
     for (const shape of shapes(store.snapshot)) {
+      if(readOnly)return;
       if (shape.type !== "link") continue;
       const url = normalizeWhiteboardLinkUrl(String(shape.props.url ?? ""));
       if (!url) continue;
@@ -4604,6 +4627,7 @@ export function NativeWhiteboard({
   }, [shapeContextMenu]);
 
   const scheduleDraw = useCallback(() => {
+    editor.setViewport(cameraRef.current);
     if (frameRef.current !== undefined) return;
     frameRef.current = requestAnimationFrame(() => {
       frameRef.current = undefined;
@@ -5142,7 +5166,10 @@ export function NativeWhiteboard({
 
   useEffect(() => {
     onMount?.(editor);
-    const unsubscribe = store.listen(() => { refresh(); scheduleDraw(); });
+    let observedPage=editor.getCurrentPageId();
+    const unsubscribe = store.listen(() => {const page=editor.getCurrentPageId();if(page!==observedPage){observedPage=page;editor.restoreCurrentPageView();}refresh();scheduleDraw();});
+    const redrawFonts=()=>scheduleDraw();
+    document.fonts?.addEventListener('loadingdone',redrawFonts);
     const observer = typeof ResizeObserver === "undefined"
       ? undefined
       : new ResizeObserver(() => scheduleDraw());
@@ -5158,9 +5185,11 @@ export function NativeWhiteboard({
       attributeFilter: ["data-color-scheme"],
     });
     scheduleDraw();
-    requestAnimationFrame(() => editor.fitCurrentPage());
+    const restoreFrame=requestAnimationFrame(() => {editor.restoreCurrentPageView();viewReady.current=true;pageViews.activate?.(editor.getCurrentPageId());pageViews.write(editor.getCurrentPageId(),cameraRef.current);});
     return () => {
       unsubscribe();
+      document.fonts?.removeEventListener('loadingdone',redrawFonts);
+      cancelAnimationFrame(restoreFrame);
       observer?.disconnect();
       themeObserver?.disconnect();
       if (frameRef.current !== undefined) cancelAnimationFrame(frameRef.current);
@@ -5404,7 +5433,7 @@ export function NativeWhiteboard({
   const pointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     if (textDraftRef.current) commitTextDraft();
     const point = eventPoint(event);
-    const tool = editor.getCurrentTool();
+    const tool = readOnly?'hand':editor.getCurrentTool();
     const hit = hitShape(point);
     if (event.button === 2) return;
     if ((tool === "text" || tool === "geo") && event.button === 0) {
@@ -6815,7 +6844,7 @@ export function NativeWhiteboard({
       })()
     : undefined;
   return (
-    <div ref={rootRef} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
+    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
         ref={canvasRef}
         className="native-whiteboard-canvas block h-full w-full touch-none"
@@ -7211,7 +7240,7 @@ export function NativeWhiteboard({
           <div
             key={`media-${shape.id}`}
             aria-label={`${video ? "视频" : "音频"}预览 ${String(shape.props.name ?? "")}`}
-            className={`absolute z-[2] overflow-hidden rounded-2xl ${selected && selectedShapeIds.size === 1 ? "pointer-events-auto ring-2 ring-[#625bc5]" : "pointer-events-none"}`}
+            className={`absolute z-[2] overflow-hidden ${video ? "rounded-none" : "rounded-2xl"} ${selected && selectedShapeIds.size === 1 ? "pointer-events-auto ring-2 ring-[#625bc5]" : "pointer-events-none"}`}
             onContextMenu={event => {
               if (!selected) return;
               event.preventDefault();
@@ -7581,7 +7610,7 @@ export function NativeWhiteboard({
           </div>
         </div>
       )}
-      <div ref={pageMenuRef} data-whiteboard-page-toolbar data-whiteboard-control-surface className="absolute left-3 top-3 z-40 flex items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-sm backdrop-blur">
+      <div ref={pageMenuRef} style={readOnly?{display:'none'}:undefined} data-whiteboard-page-toolbar data-whiteboard-control-surface className="absolute left-3 top-3 z-40 flex items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-sm backdrop-blur">
         <button
           type="button"
           aria-label="打开白板页面菜单"
@@ -7927,7 +7956,7 @@ export function NativeWhiteboard({
             <Minus size={13} strokeWidth={2.2} />
           </button>
           <span aria-live="polite" className="min-w-0 flex-1 px-1 text-center tabular-nums">
-            {formatWhiteboardZoom(zoomLabel / 100)}% · MOKI白板
+            {formatWhiteboardZoom(zoomLabel / 100)}%
           </span>
           <button
             type="button"
@@ -7939,6 +7968,7 @@ export function NativeWhiteboard({
           >
             <Plus size={13} strokeWidth={2.2} />
           </button>
+          <button type="button" aria-label="重置画布" title="重置视图（100%，回到原点）" onClick={()=>editor.resetView()} className="grid size-7 place-items-center rounded-lg transition hover:bg-[#f0efff] active:scale-90"><RotateCcw size={13}/></button>
         </div>
       </div>
     </div>

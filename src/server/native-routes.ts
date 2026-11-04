@@ -7,6 +7,7 @@ import type { WhiteboardStore } from './store.js';
 import {VersionConflictError} from './store.js';
 import {CachedWhiteboardRepository} from './cached-whiteboard-repository.js';
 import type {ResourceCache} from './resource-cache.js';
+import {WHITEBOARD_HTTP_BODY_LIMIT} from '../vendor/moki/shared/whiteboard-transfer-limits.js';
 
 // Original page-aware repository, isolated by board; media is content-addressed and shared.
 export async function registerNativeRoutes(app: FastifyInstance, store: WhiteboardStore,cache?:ResourceCache) {
@@ -34,7 +35,7 @@ export async function registerNativeRoutes(app: FastifyInstance, store: Whiteboa
     return {entry,board};
   }
   app.addHook('onSend',async(request,reply,payload)=>{if(request.url.startsWith('/api/whiteboard')){const query=request.query as {boardId?:string};try{reply.header('x-moki-board-version',store.get(query.boardId??'default').version);}catch{}}return payload;});
-  await registerWhiteboardRoutes(app,{repository:request=>{
+  await registerWhiteboardRoutes(app,{maxSnapshotBytes:WHITEBOARD_HTTP_BODY_LIMIT-2*1024*1024,repository:request=>{
     const {entry,board}=repository(request);
     return new Proxy(entry.repo,{get(target,key){
       const value=Reflect.get(target,key);

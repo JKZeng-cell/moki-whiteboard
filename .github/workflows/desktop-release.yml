@@ -1,0 +1,131 @@
+name: Build and publish desktop update
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: New release revision tag (application version is unchanged)
+        required: true
+        default: v0.1.8-r2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:mcp:stdio
+      - run: npm run desktop:dist
+      - name: Verify the packaged Windows application
+        id: package
+        shell: pwsh
+        run: |
+          $packageDir = (Get-ChildItem -Directory -Filter 'release-build-*' | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+          node scripts/verify-packaged.mjs "$packageDir/win-unpacked" "$packageDir"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/verify-file-opening.mjs "$packageDir/win-unpacked" "$packageDir"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/verify-desktop-source.mjs "$packageDir/win-unpacked" "$packageDir"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/audit-release.mjs "$packageDir" --local-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import pathlib,zipfile; p=next(pathlib.Path(r'$packageDir').glob('*Windows-x64.zip')); z=zipfile.ZipFile(p); assert z.testzip() is None; print('Windows ZIP CRC verified')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "directory=$packageDir" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-Windows-x64
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            ${{ steps.package.outputs.directory }}/*.exe
+            ${{ steps.package.outputs.directory }}/*.zip
+            ${{ steps.package.outputs.directory }}/*.blockmap
+            ${{ steps.package.outputs.directory }}/*.txt
+            ${{ steps.package.outputs.directory }}/*verification.json
+            ${{ steps.package.outputs.directory }}/artifact-audit.json
+
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      UNIVER_DSH_GATEWAY_DEBUG: '1'
+    steps:
+      - uses: actions/checkout@v5
+      - name: Use a physical temporary directory
+        run: |
+          temp_root="$(mktemp -d /private/tmp/moki-whiteboard-ci.XXXXXX)"
+          echo "TMPDIR=$temp_root/" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          architecture: arm64
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:mcp:stdio
+      - run: npm run desktop:dist:mac -- --arch=arm64
+      - name: Verify packaged source parity
+        run: |
+          package_dir="$(find . -maxdepth 1 -type d -name 'release-build-mac-*' | head -1)"
+          app_path="$(find "$package_dir" -maxdepth 2 -type d -name '*.app' | head -1)"
+          node scripts/verify-desktop-source.mjs "$app_path" "$package_dir"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-macOS-arm64
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            release-build-mac-*/*.dmg
+            release-build-mac-*/*.zip
+            release-build-mac-*/*.txt
+            release-build-mac-*/*verification.json
+
+  publish:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-Windows-x64
+          path: verified-release/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-macOS-arm64
+          path: verified-release/macos
+      - run: node scripts/publish-desktop-update.mjs verified-release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-publication-verification
+          path: verified-release/published-release.json
+          if-no-files-found: ignore

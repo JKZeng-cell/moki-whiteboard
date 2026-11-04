@@ -744,11 +744,15 @@ describe("native whiteboard history", () => {
     const store = new NativeWhiteboardStore();
     render(createElement(NativeWhiteboard, { store }));
 
-    expect(screen.getByText("100% · MOKI白板")).toBeInTheDocument();
+    expect(screen.getByText("100%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "放大白板" }));
-    expect(screen.getByText("120% · MOKI白板")).toBeInTheDocument();
+    expect(screen.getByText("120%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "缩小白板" }));
-    expect(screen.getByText("100% · MOKI白板")).toBeInTheDocument();
+    expect(screen.getByText("100%")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'放大白板'}));
+    fireEvent.click(screen.getByRole('button',{name:'重置画布'}));
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.queryByText(/MOKI白板/u)).toBeNull();
   });
 
   it("renders an interactive iframe only for a selected preview link and opens browsing externally", async () => {
@@ -2966,11 +2970,11 @@ describe("native whiteboard history", () => {
     const store = new NativeWhiteboardStore();
     render(createElement(NativeWhiteboard, { store }));
     const canvas = document.querySelector(".native-whiteboard-canvas") as HTMLCanvasElement;
-    const initial = Number(screen.getByText(/% · MOKI白板/u).textContent?.match(/\d+/u)?.[0]);
+    const initial = Number(screen.getByText(/%$/u).textContent?.match(/\d+/u)?.[0]);
 
     fireEvent.wheel(canvas, { altKey: true, deltaY: -180, clientX: 400, clientY: 300 });
     await waitFor(() => {
-      const current = Number(screen.getByText(/% · MOKI白板/u).textContent?.match(/\d+/u)?.[0]);
+      const current = Number(screen.getByText(/%$/u).textContent?.match(/\d+/u)?.[0]);
       expect(current).toBeGreaterThan(initial);
     });
   });
@@ -2980,7 +2984,7 @@ describe("native whiteboard history", () => {
     render(createElement(NativeWhiteboard, { store: new NativeWhiteboardStore() }));
     const canvas = document.querySelector(".native-whiteboard-canvas") as HTMLCanvasElement;
     const percentage = () => Number(
-      screen.getByText(/% · MOKI白板/u).textContent!.split("%")[0]!.replaceAll(",", ""),
+      screen.getByText(/%$/u).textContent!.split("%")[0]!.replaceAll(",", ""),
     );
 
     fireEvent.wheel(canvas, { ctrlKey: true, deltaY: -1_000, clientX: 321, clientY: 223 });

@@ -1,4 +1,5 @@
-import { strFromU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, unzipSync, zip, type Zippable } from "fflate";
+import {WHITEBOARD_ARCHIVE_MAX_FILES,readBoundedWhiteboardResponse} from '../../shared/whiteboard-transfer-limits.js';
 import { z } from "zod";
 import { WhiteboardSnapshotSchema, type WhiteboardSnapshot } from "../../domain/whiteboard.js";
 import type {
@@ -16,8 +17,7 @@ const WHITEBOARD_TRANSFER_FORMAT = "moki-whiteboard";
 const WHITEBOARD_TRANSFER_VERSION = 2;
 const WHITEBOARD_TRANSFER_MANIFEST = "manifest.json";
 const WHITEBOARD_ASSET_CONTENT_TYPE = "application/x-moki-whiteboard-asset";
-const MAX_WHITEBOARD_TRANSFER_BYTES = 256 * 1024 * 1024;
-const MAX_WHITEBOARD_TRANSFER_FILES = 20_000;
+const MAX_WHITEBOARD_TRANSFER_FILES = WHITEBOARD_ARCHIVE_MAX_FILES;
 
 const LegacyEmbeddedAssetSchema = z.object({
   assetId: z.string().min(1),
@@ -125,7 +125,9 @@ function dataUrlBytes(dataUrl: string): { mimeType: string; bytes: Uint8Array } 
 }
 
 function rendererBytes(value: Uint8Array): Uint8Array {
-  const bytes = new Uint8Array(value.byteLength);
+  const byteLength=value.byteLength;
+  if(value instanceof Uint8Array)return value;
+  const bytes = new Uint8Array(byteLength);
   bytes.set(value);
   return bytes;
 }
@@ -151,10 +153,10 @@ async function sourceBytes(source: string, fetcher: typeof fetch): Promise<{ mim
   if (source.startsWith("data:")) return dataUrlBytes(source);
   const response = await fetcher(source, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const blob = await response.blob();
+  const bytes = await readBoundedWhiteboardResponse(response, Infinity);
   return {
-    mimeType: blob.type || response.headers.get("content-type")?.split(";", 1)[0] || "application/octet-stream",
-    bytes: new Uint8Array(await blob.arrayBuffer()),
+    mimeType: response.headers.get("content-type")?.split(";", 1)[0] || "application/octet-stream",
+    bytes,
   };
 }
 
@@ -212,11 +214,10 @@ export async function createWhiteboardTransferFile(
   const parsed = WhiteboardSnapshotSchema.safeParse(snapshot);
   if (!parsed.success) throw new Error("当前白板数据格式无效，无法导出。");
   const fetcher = options.fetcher ?? fetch;
-  const archive: Record<string, Uint8Array> = {};
+  const archive: Zippable = {};
   const archivedContent = new Map<string, Array<{ archivePath: string; bytes: Uint8Array }>>();
-  let expandedBytes = 0;
   let archiveFileCount = 0;
-  const addArchiveContent = (archivePath: string, value: Uint8Array): string => {
+  const addArchiveContent = (archivePath: string, value: Uint8Array, storeOnly=false): string => {
     const bytes = rendererBytes(value);
     const fingerprint = byteFingerprint(bytes);
     const duplicate = archivedContent.get(fingerprint)?.find((entry) => equalBytes(entry.bytes, bytes));
@@ -224,11 +225,7 @@ export async function createWhiteboardTransferFile(
     if (archiveFileCount + 1 >= MAX_WHITEBOARD_TRANSFER_FILES) {
       throw new Error("白板便携文件数量超过 20000 个，无法导出。");
     }
-    expandedBytes += bytes.byteLength;
-    if (expandedBytes > MAX_WHITEBOARD_TRANSFER_BYTES) {
-      throw new Error("白板便携文件内容超过 256MB，无法导出。请移除过大的映射文件或资料夹后重试。");
-    }
-    archive[archivePath] = bytes;
+    archive[archivePath] = storeOnly?[bytes,{level:0}]:bytes;
     archiveFileCount += 1;
     const matches = archivedContent.get(fingerprint) ?? [];
     matches.push({ archivePath, bytes });
@@ -242,12 +239,13 @@ export async function createWhiteboardTransferFile(
     let content: { mimeType: string; bytes: Uint8Array };
     try {
       content = await sourceBytes(String(props.src ?? ""), fetcher);
-    } catch {
-      throw new Error(`白板资源打包失败：${String(props.name ?? record.id)}`);
+    } catch (error) {
+      throw new Error(`白板资源打包失败：${String(props.name ?? record.id)}（${error instanceof Error?error.message:'无法读取资源'}）`);
     }
     const archivePath = addArchiveContent(
       `assets/${String(assets.length + 1).padStart(5, "0")}.bin`,
       content.bytes,
+      /^(?:image\/(?!svg)|audio\/|video\/)/iu.test(content.mimeType),
     );
     assets.push({
       assetId: record.id,
@@ -280,6 +278,7 @@ export async function createWhiteboardTransferFile(
         const archivePath = addArchiveContent(
           `resources/${String(resources.length + 1).padStart(5, "0")}/${String(files.length + 1).padStart(5, "0")}.bin`,
           file.bytes,
+          /\.(?:png|jpe?g|gif|webp|avif|heic|mp[34]|mov|mkv|webm|wav|ogg|zip|rar|7z|pdf|docx|xlsx|pptx|exe|dmg)$/iu.test(file.relativePath),
         );
         files.push({ archivePath, relativePath });
         resourceFileCount += 1;
@@ -302,16 +301,10 @@ export async function createWhiteboardTransferFile(
   // fflate distinguishes files from nested directories with instanceof, so
   // copy TextEncoder/IPC buffers into the renderer realm before archiving.
   const manifestBytes = rendererBytes(new TextEncoder().encode(JSON.stringify(manifest)));
-  if (expandedBytes + manifestBytes.byteLength > MAX_WHITEBOARD_TRANSFER_BYTES) {
-    throw new Error("白板便携文件内容超过 256MB，无法导出。请移除过大的映射文件或资料夹后重试。");
-  }
   archive[WHITEBOARD_TRANSFER_MANIFEST] = manifestBytes;
-  const bytes = zipSync(archive, { level: 6 });
-  if (bytes.byteLength > MAX_WHITEBOARD_TRANSFER_BYTES) {
-    throw new Error("白板便携文件超过 256MB，无法导出。请移除过大的映射文件或资料夹后重试。");
-  }
+  const bytes = await new Promise<Uint8Array>((resolve,reject)=>{zip(archive,{level:6},(error,result)=>error?reject(error):resolve(result));});
   return {
-    blob: new Blob([bytes.slice().buffer as ArrayBuffer], { type: WHITEBOARD_TRANSFER_MIME }),
+    blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: WHITEBOARD_TRANSFER_MIME }),
     fileName: `${safeFileStem(options.fileName ?? "MOKI-白板")}${WHITEBOARD_TRANSFER_EXTENSION}`,
     assetCount: assets.length,
     resourceCount: resources.length,
@@ -342,7 +335,7 @@ async function uploadAsset(
       ...(asset.width ? { "x-moki-asset-width": String(asset.width) } : {}),
       ...(asset.height ? { "x-moki-asset-height": String(asset.height) } : {}),
     },
-    body: new Blob([asset.bytes.slice().buffer as ArrayBuffer], { type: asset.mimeType }),
+    body: new Blob([asset.bytes as Uint8Array<ArrayBuffer>], { type: asset.mimeType }),
   });
   const result = await response.json() as Record<string, unknown>;
   if (!response.ok || typeof result.src !== "string") {
@@ -380,13 +373,11 @@ function rewriteRestoredResources(snapshot: WhiteboardSnapshot, restored: Deskto
 }
 
 function unzipWhiteboard(bytes: Uint8Array): Record<string, Uint8Array> {
-  let expandedBytes = 0;
   let files = 0;
   return unzipSync(bytes, {
     filter(entry) {
       files += 1;
-      expandedBytes += entry.originalSize;
-      if (files > MAX_WHITEBOARD_TRANSFER_FILES || expandedBytes > MAX_WHITEBOARD_TRANSFER_BYTES) {
+      if (files > MAX_WHITEBOARD_TRANSFER_FILES) {
         throw new Error("白板便携文件展开后超过安全限制。");
       }
       return true;
@@ -410,7 +401,6 @@ export async function importWhiteboardTransferFile(
   boardTitle?: string;
 }> {
   if (!isWhiteboardTransferFile(file)) throw new Error(`请选择 ${WHITEBOARD_TRANSFER_EXTENSION} 白板文件。`);
-  if (file.size > MAX_WHITEBOARD_TRANSFER_BYTES) throw new Error("白板文件超过 256MB，无法导入。");
   const bytes = new Uint8Array(await file.arrayBuffer());
   const fetcher = options.fetcher ?? apiFetch;
 

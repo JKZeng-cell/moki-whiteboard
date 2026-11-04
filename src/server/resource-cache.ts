@@ -81,13 +81,25 @@ export class ResourceCache {
         if(value!==row.value)changes.push({table,column,rowid:Number(row._rowid),value});
       }
     }
-    // Images remain recoverable from SQLite, while their material cache follows the selected directory.
-    if(tables.includes('whiteboard_assets'))for(const row of this.store.db.prepare('SELECT id,content FROM whiteboard_assets').all())this.writeAsset(String(row.id),Buffer.from(row.content as Uint8Array),target);
+    // Small assets retain DB recovery bytes; larger assets live in the material directory.
+    if(tables.includes('whiteboard_assets'))for(const row of this.store.db.prepare('SELECT id,content,byte_size FROM whiteboard_assets').all()){
+      const content=Buffer.from(row.content as Uint8Array);
+      if(content.byteLength)this.writeAsset(String(row.id),content,target);
+      else this.readAsset(String(row.id),content,Number(row.byte_size),target);
+    }
       for(const change of changes)this.store.db.prepare(`UPDATE "${change.table}" SET ${change.column}=? WHERE rowid=?`).run(change.value,change.rowid);
       this.persist({path:target});
       this.store.db.exec('COMMIT');this.error=null;
     }catch(error){this.store.db.exec('ROLLBACK');throw error;}
     return this.info();
+  }
+  readAsset(id:string,embedded:Uint8Array,byteSize:number,root=this.path):Buffer{
+    if(!/^[a-f0-9]{64}$/.test(id))throw new Error('素材标识无效');
+    const path=join(root,'images',id);
+    if(!embedded.byteLength&&lstatSync(path).isSymbolicLink())throw new Error('素材文件不能为符号链接');
+    const content=embedded.byteLength?Buffer.from(embedded):readFileSync(path);
+    if(content.byteLength!==byteSize||hash(content)!==id)throw new Error('素材内容校验失败，未替换原文件');
+    return content;
   }
   writeAsset(id:string,content:Buffer,root=this.path){
     if(!/^[a-f0-9]{64}$/.test(id)||hash(content)!==id)throw new Error('素材图片标识或内容校验失败');

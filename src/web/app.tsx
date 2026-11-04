@@ -45,6 +45,6 @@ export function App(){
  <BoardManager items={items} open={next=>navigate(next)} refresh={refresh} controls={<>{whiteboardFiles.controls}<button className="native-app-control" aria-label="设置" title="设置" onClick={()=>{setSettingsTab('general');setSettings(true);}}><Settings size={18}/></button></>}/>}
  {whiteboardFiles.busy?<div className="whiteboard-file-progress" role="status">正在打开白板文件…</div>:null}
  {error||syncError?<div className="native-app-error" role="alert">{error||syncError}<button aria-label="关闭错误" onClick={()=>{setError('');setSyncError('');}}><X size={15}/></button></div>:null}
- {settings?<SettingsDialog version={connection?.appVersion??''} tab={settingsTab} onTab={setSettingsTab} close={()=>setSettings(false)} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<McpConnectionPanel info={connection} agentTask={agentTask} http={http} onTransportChange={setHttp}/>}/>:null}
+ {settings?<SettingsDialog currentBoardId={id} version={connection?.appVersion??''} tab={settingsTab} onTab={setSettingsTab} close={()=>setSettings(false)} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<McpConnectionPanel info={connection} agentTask={agentTask} http={http} onTransportChange={setHttp}/>}/>:null}
  </>;
 }

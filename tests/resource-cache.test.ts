@@ -7,11 +7,27 @@ import {ResourceCache,legacyResourcePath} from '../src/server/resource-cache.js'
 import {WhiteboardStore} from '../src/server/store.js';
 import {createApp} from '../src/server/app.js';
 import {shapes} from '../src/core/board.js';
+import {CachedWhiteboardRepository} from '../src/server/cached-whiteboard-repository.js';
+import {exportBoard} from '../src/server/portable-export.js';
+import {unzipSync,strFromU8} from 'fflate';
 
 const runs:Array<{root:string;store:WhiteboardStore}>=[];
 function setup(){const root=mkdtempSync(join(tmpdir(),'moki-cache-test-'));const store=new WhiteboardStore(join(root,'profile','whiteboard.db'));runs.push({root,store});const install=join(root,'install');mkdirSync(install);return {root,store,install,cache:new ResourceCache(store,join(install,'whiteboard-materials'),install)};}
 afterEach(()=>{for(const {root,store} of runs.splice(0)){store.close();rmSync(root,{recursive:true,force:true});}});
 describe('material cache settings',()=>{
+ it('keeps disk-backed media readable, portable and intact when the cache moves',async()=>{
+  const {store,cache,root}=setup();cache.activate();const app=await createApp({store,resourceCache:cache});
+  try{
+   const repository=new CachedWhiteboardRepository(store.db,cache,8),content=Buffer.alloc(64,7),saved=repository.saveAsset(content,{mimeType:'video/mp4',fileName:'clip.mp4'});
+   expect(Buffer.from(store.db.prepare('SELECT content FROM whiteboard_assets WHERE id=?').get(saved.id)!.content as Uint8Array)).toHaveLength(0);
+   expect(repository.findAsset(saved.id)!.content).toEqual(content);expect(repository.saveAsset(content,{mimeType:'video/mp4'}).deduplicated).toBe(true);
+   const board=store.get();board.snapshot.document.store['asset:test']={id:'asset:test',typeName:'asset',type:'media',props:{src:saved.src,mimeType:'video/mp4'}};store.replaceSnapshot(board.id,board.snapshot,'test');
+   const range=await app.inject({url:saved.src,headers:{range:'bytes=2-7'}});expect(range.statusCode).toBe(206);expect(range.rawPayload).toEqual(content.subarray(2,8));
+   const exported=await exportBoard(store,board.id),archive=unzipSync(new Uint8Array(await exported.blob.arrayBuffer())),manifest=JSON.parse(strFromU8(archive['manifest.json']!));expect(Buffer.from(archive[manifest.assets[0].archivePath]!)).toEqual(content);
+   const destination=join(root,'new-cache');cache.schedule(destination);cache.activate();expect(new CachedWhiteboardRepository(store.db,new ResourceCache(store),8).findAsset(saved.id)!.content).toEqual(content);
+   writeFileSync(join(destination,'images',saved.id),'corrupted');expect(()=>repository.findAsset(saved.id)).toThrow('校验失败');
+  }finally{await app.close();}
+ });
  it('migrates default material files and references without deleting old files or changing external mappings',async()=>{
   const {root,store,install,cache}=setup();const old=legacyResourcePath(store);mkdirSync(old,{recursive:true});const file=join(old,'note.txt');writeFileSync(file,'material');
   store.db.exec('CREATE TABLE native_library (id TEXT PRIMARY KEY,item_json TEXT NOT NULL)');

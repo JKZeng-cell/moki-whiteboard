@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {WHITEBOARD_ARCHIVE_MAX_FILES,readBoundedWhiteboardResponse} from '../shared/whiteboard-transfer-limits.js';
 import { lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import type {
@@ -8,8 +9,7 @@ import type {
   DesktopWhiteboardTransferResource,
 } from "../shared/desktop-whiteboard-transfer-contract.js";
 
-export const MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES = 256 * 1024 * 1024;
-export const MAX_PORTABLE_WHITEBOARD_RESOURCE_FILES = 20_000;
+export const MAX_PORTABLE_WHITEBOARD_RESOURCE_FILES = WHITEBOARD_ARCHIVE_MAX_FILES;
 
 function safeSegment(value: string, fallback: string): string {
   const sanitized = value
@@ -37,14 +37,7 @@ async function readRemoteFile(source: URL, preferredName?: string): Promise<Desk
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`在线资料读取失败：HTTP ${response.status}`);
-  const declaredSize = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredSize) && declaredSize > MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES) {
-    throw new Error("单个白板映射文件不能超过 256MB");
-  }
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES) {
-    throw new Error("单个白板映射文件不能超过 256MB");
-  }
+  const bytes = await readBoundedWhiteboardResponse(response, Infinity);
   const name = safeSegment(preferredName || decodeURIComponent(basename(source.pathname)) || "在线资料", "在线资料");
   return { name, kind: "file", files: [{ relativePath: name, bytes }] };
 }
@@ -55,16 +48,14 @@ async function readLocalResource(source: string, preferredName?: string): Promis
   if (rootMetadata.isSymbolicLink()) throw new Error("不支持打包符号链接或目录联接");
   const rootName = safeSegment(preferredName || basename(root), rootMetadata.isDirectory() ? "白板资料夹" : "白板资料");
   if (rootMetadata.isFile()) {
-    if (rootMetadata.size > MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES) throw new Error("单个白板映射文件不能超过 256MB");
     return {
       name: rootName,
       kind: "file",
-      files: [{ relativePath: rootName, bytes: new Uint8Array(await readFile(root)) }],
+      files: [{ relativePath: rootName, bytes: await readFile(root) }],
     };
   }
   if (!rootMetadata.isDirectory()) throw new Error("白板映射目标不是文件或文件夹");
   const files: DesktopWhiteboardTransferFile[] = [];
-  let totalBytes = 0;
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (entry.isSymbolicLink()) continue;
@@ -75,11 +66,8 @@ async function readLocalResource(source: string, preferredName?: string): Promis
       }
       if (!entry.isFile()) continue;
       if (files.length >= MAX_PORTABLE_WHITEBOARD_RESOURCE_FILES) throw new Error("白板映射文件数量超过 20000 个");
-      const metadata = await lstat(path);
-      totalBytes += metadata.size;
-      if (totalBytes > MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES) throw new Error("单个白板映射资料夹不能超过 256MB");
       const relativePath = relative(root, path).split(sep).map((segment) => safeSegment(segment, "未命名文件")).join("/");
-      files.push({ relativePath, bytes: new Uint8Array(await readFile(path)) });
+      files.push({ relativePath, bytes: await readFile(path) });
     }
   };
   await visit(root);
@@ -91,7 +79,7 @@ export async function readWhiteboardTransferResource(
 ): Promise<DesktopWhiteboardReadResourceResult> {
   const source = input.source.trim();
   if (!source) throw new Error("白板映射来源为空");
-  if(source.startsWith('data:')){const match=/^data:([^;,]+);base64,([\s\S]+)$/.exec(source);if(!match)throw new Error('内联文件格式无效');const bytes=Buffer.from(match[2]!, 'base64');if(bytes.length>MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES)throw new Error('内联文件超过256MB');const name=safeSegment(input.name??'白板附件','白板附件');return {name,kind:'file',files:[{relativePath:name,bytes}]};}
+  if(source.startsWith('data:')){const match=/^data:([^;,]+);base64,([\s\S]+)$/.exec(source);if(!match)throw new Error('内联文件格式无效');const bytes=Buffer.from(match[2]!, 'base64');const name=safeSegment(input.name??'白板附件','白板附件');return {name,kind:'file',files:[{relativePath:name,bytes}]};}
   if (/^https?:\/\//iu.test(source)) {
     return readRemoteFile(new URL(source), input.name);
   }
@@ -120,7 +108,6 @@ export async function restoreWhiteboardTransferResources(
   if (resources.length > 2_000) throw new Error("白板映射资料数量超过 2000 个");
   const importRoot = join(resolve(baseDirectory), safeSegment(importId, "import"));
   const occupied = new Set<string>();
-  let totalBytes = 0;
   let totalFiles = 0;
   await mkdir(resolve(baseDirectory), { recursive: true });
   await mkdir(importRoot, { recursive: false });
@@ -133,9 +120,7 @@ export async function restoreWhiteboardTransferResources(
       let firstFilePath: string | undefined;
       for (const file of resource.files) {
         totalFiles += 1;
-        totalBytes += file.bytes.byteLength;
         if (totalFiles > MAX_PORTABLE_WHITEBOARD_RESOURCE_FILES) throw new Error("白板便携文件数量超过 20000 个");
-        if (totalBytes > MAX_PORTABLE_WHITEBOARD_RESOURCE_BYTES) throw new Error("白板便携文件内容超过 256MB");
         const relativePath = safeRelativePath(file.relativePath);
         const target = resource.kind === "folder"
           ? join(destination, ...relativePath.split("/"))
