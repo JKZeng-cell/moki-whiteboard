@@ -1,0 +1,103 @@
+{
+  "repository": "JKZeng-cell/moki-whiteboard",
+  "tag": "v0.1.8-r2",
+  "version": "0.1.8",
+  "sourceCommit": "7b40fd8d4f984ef014ade6cc2fc95a5a43c66feb",
+  "publicationCommit": "5a7a66d5afdf4ba7ded55d07870cf21797959205",
+  "nativeBuildRun": 41813315852,
+  "nativeJobs": {
+    "windows": 126517723306,
+    "macos": 126517722917
+  },
+  "publicationRun": 41814262140,
+  "releaseId": 433782527,
+  "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r2",
+  "nativeChecks": {
+    "windows": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 97
+    },
+    "macos": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 97
+    }
+  },
+  "signing": {
+    "windows": "unsigned",
+    "macOS": "ad-hoc",
+    "developerIDSigned": false,
+    "notarized": false
+  },
+  "publicDownloadsVerified": true,
+  "previousAssetsUnchanged": true,
+  "files": [
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.dmg",
+      "bytes": 253227144,
+      "sha256": "00b59641590d21f4b34076665e433e0b371f6e40d45c73d79c7af7405a753532",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.zip",
+      "bytes": 258530015,
+      "sha256": "9b8b0ef5cf3e6dbe4d59bef4f72a1fc1cd5a44643273f3437a07d53a7e1e6684",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/MOKI-Whiteboard-0.1.8-macOS-arm64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-Windows-x64.zip",
+      "bytes": 279845833,
+      "sha256": "350d6a152f56fee951f1013be09408810ba7ce553b1e77efa51185537fb6b924",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/MOKI-Whiteboard-0.1.8-Windows-x64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe",
+      "bytes": 213649043,
+      "sha256": "afc6fab2899c9ac049d28239305e5dd6228a1a378bf2498d28ee626f14de1ea6",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/MOKI-Whiteboard-Setup-0.1.8-x64.exe"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap",
+      "bytes": 222628,
+      "sha256": "d213cf1ca8a1a0906a5e4fca018f98c5c4232fa99ee0e243bdbb161432a6b159",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-macOS-arm64.txt",
+      "bytes": 208,
+      "sha256": "d753069436d9a8cfd01c196fc5e412b954714c9b3a7724bf89525c6a27f2b94e",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/SHA256SUMS-0.1.8-macOS-arm64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-Windows-x64.txt",
+      "bytes": 317,
+      "sha256": "49453f39b640264b36f6f715d93b79b35fee1b69fab1464bce8df9cb38c97629",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/SHA256SUMS-0.1.8-Windows-x64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8.txt",
+      "bytes": 525,
+      "sha256": "4081a1c19849049c0d16692489147fed51eae89a0f26b378d87fee250ed59100",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/SHA256SUMS-0.1.8.txt"
+    },
+    {
+      "name": "verification-v0.1.8-r2.json",
+      "bytes": 1994,
+      "sha256": "371da4fb4ec18cb3d85d5601a399e77ed92c527efbe91071d7f045c66a6ca886",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r2/verification-v0.1.8-r2.json"
+    }
+  ]
+}
