@@ -11,6 +11,8 @@ async function run(command,args){
  if(code!==0)throw new Error(`Packaging command failed (${code})`);
 }
 if(process.platform!=='win32')throw new Error('Windows packaging requires Windows.');
+// Fresh npm installs may omit optional install scripts; ensure the configured runtime exists.
+await run(process.execPath,[join(root,'node_modules/electron/install.js')]);
 await run(process.execPath,[join(root,'scripts/build-whiteboard-icon.mjs')]);
 await run(process.execPath,[join(root,'scripts/build-installer-file-list.mjs')]);
 await run(process.execPath,[join(root,'node_modules/vite/bin/vite.js'),'build']);
