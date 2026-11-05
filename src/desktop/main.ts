@@ -15,6 +15,8 @@ import {APP_VERSION} from '../server/app-metadata.js';
 import {desktopCachePaths} from './runtime-paths.js';
 import {DesktopSettings,AUTOSTART_ARGUMENT} from './settings.js';
 import {DesktopLifecycle} from './lifecycle.js';
+import {WindowSaves} from './window-saves.js';
+import {boardWindowId,boardWindowPath} from './board-windows.js';
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +26,19 @@ let store: WhiteboardStore | undefined;
 let resourceCache:ResourceCache|undefined;
 let documents:WhiteboardDocuments|undefined;
 let activeWindow: BrowserWindow | undefined;
+const windows=new Set<BrowserWindow>(),claims=new Map<BrowserWindow,string>();
+const boardOpenings=new Map<string,Promise<BrowserWindow>>(),closing=new Map<BrowserWindow,Promise<void>>(),approvedClose=new Set<BrowserWindow>();
+let fileTarget:BrowserWindow|undefined;
+const windowSaves=new WindowSaves<BrowserWindow>(async win=>{
+ if(win.isDestroyed()||win.webContents.isLoadingMainFrame())return;
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{await Promise.race([win.webContents.executeJavaScript('(async()=>{await window.mokiBeforeQuit?.();})()'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(win.getTitle()+'：白板保存超时，请稍后重试')),40000);})]);}
+ finally{clearTimeout(timer);}
+});
+const liveWindows=()=>[...windows].filter(win=>!win.isDestroyed());
+function revealWindow(win:BrowserWindow){if(win.isDestroyed())return;if(win.isMinimized())win.restore();win.show();win.focus();activeWindow=win;}
+async function cancelWindowClose(win:BrowserWindow){if(!win.isDestroyed())await win.webContents.executeJavaScript('window.mokiCancelClose?.()').catch(()=>{});}
+
 let desktopSettings:DesktopSettings|undefined;
 let tray:Tray|undefined;
 let openingWindow:Promise<void>|undefined;
@@ -31,32 +46,33 @@ const lifecycle=new DesktopLifecycle({
  canHide:()=>Boolean(tray&&!tray.isDestroyed()&&desktopSettings?.closeToTray),
  hide:()=>activeWindow?.hide(),
  prepare:async()=>{
-  const win=activeWindow;if(!win||win.isDestroyed()||win.webContents.isLoadingMainFrame())return;
-  let timer:ReturnType<typeof setTimeout>|undefined;
-  try{await Promise.race([win.webContents.executeJavaScript('(async()=>{await window.mokiBeforeQuit?.();})()'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('白板保存超时，请稍后重试退出')),40000);})]);}
-  finally{clearTimeout(timer);}
+  const all=liveWindows();try{await windowSaves.prepareAll(all);}catch(error){await Promise.allSettled(all.map(cancelWindowClose));const failed=(error as {windows?:BrowserWindow[]}).windows?.[0];if(failed)revealWindow(failed);throw error;}
  },
  stop:async()=>{try{await server?.close();}finally{store?.close();tray?.destroy();}},
  exit:()=>app.exit(Number(process.exitCode??0)),
  failed:error=>{console.error('退出前保存失败：',error);if(process.env.MOKI_WHITEBOARD_SMOKE==='1'){app.exit(1);return;}void openWindow();dialog.showErrorBox('白板尚未保存，未退出',String(error));}
 });
 const pendingWhiteboards = new WhiteboardOpenQueue(()=>{
- if(activeWindow&&!activeWindow.isDestroyed())activeWindow.webContents.send('moki:file-pending');
+ const win=activeWindow&&!activeWindow.isDestroyed()?activeWindow:liveWindows()[0];
+ if(win){fileTarget=win;win.webContents.send('moki:file-pending');}
 });
 pendingWhiteboards.add(whiteboardPaths(process.argv));
 const resourceRoot = () => resourceCache?.path??join(process.env.MOKI_WHITEBOARD_DATA ? dirname(process.env.MOKI_WHITEBOARD_DATA) : (app.isPackaged ? app.getPath('userData') : join(process.cwd(),'data')), 'resources');
 let localOrigin = 'http://127.0.0.1:4321';
 function installDesktopBridge(){
- const requireLocal=(event:Electron.IpcMainInvokeEvent)=>{if(!event.senderFrame?.url.startsWith(localOrigin+'/'))throw new Error('无效桌面调用来源');};
+ const requireLocal=(event:Electron.IpcMainInvokeEvent)=>{const win=BrowserWindow.fromWebContents(event.sender);if(!win||!windows.has(win)||!event.senderFrame?.url.startsWith(localOrigin+'/')||event.senderFrame.parent)throw new Error('无效桌面调用来源');return win;};
  const handle=(name:string,fn:(...args:any[])=>unknown)=>ipcMain.handle(name,(event,...args)=>{requireLocal(event);return fn(...args);});
+ const handleWindow=(name:string,fn:(win:BrowserWindow,...args:any[])=>unknown)=>ipcMain.handle(name,(event,...args)=>fn(requireLocal(event),...args));
+ handleWindow('moki:window-board',(win,id:unknown,detach=false)=>openBoardWindow(id,win,detach===true));
+ handleWindow('moki:window-focus-board',async(win,id:unknown)=>{const path=boardWindowPath(id);await boardOpenings.get(String(id));const existing=findBoardWindow(String(id),win);if(existing){revealWindow(existing);return true;}claims.set(win,boardWindowId(localOrigin+path,localOrigin)!);return false;});
  handle('moki:desktop-get',()=>desktopSettings!.get());
  handle('moki:desktop-set',(input:unknown)=>desktopSettings!.set(input));
  handle('moki:desktop-quit',()=>{setImmediate(()=>void lifecycle.quit());});
  handle('moki:cache-get',()=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');return resourceCache.info();});
  handle('moki:cache-set',(path:unknown)=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');if(path!==null&&typeof path!=='string')throw new Error('素材路径无效');return resourceCache.schedule(path);});
- handle('moki:select-file',async()=>{const result=await dialog.showOpenDialog(activeWindow!,{properties:['openFile']});return result.canceled?null:result.filePaths[0]??null;});
- handle('moki:select-folder',async()=>{const result=await dialog.showOpenDialog(activeWindow!,{properties:['openDirectory']});return result.canceled?null:result.filePaths[0]??null;});
- handle('moki:save-path',async(name:string)=>{const result=await dialog.showSaveDialog(activeWindow!,{defaultPath:String(name)});return result.canceled?null:result.filePath??null;});
+ handleWindow('moki:select-file',async win=>{const result=await dialog.showOpenDialog(win,{properties:['openFile']});return result.canceled?null:result.filePaths[0]??null;});
+ handleWindow('moki:select-folder',async win=>{const result=await dialog.showOpenDialog(win,{properties:['openDirectory']});return result.canceled?null:result.filePaths[0]??null;});
+ handleWindow('moki:save-path',async(win,name:string)=>{const result=await dialog.showSaveDialog(win,{defaultPath:String(name)});return result.canceled?null:result.filePath??null;});
  handle('moki:open-path',async(path:string)=>!(await shell.openPath(String(path))));
  handle('moki:open-url',async(value:string)=>{if(!isAllowedExternalUrl(value))return false;await shell.openExternal(new URL(value).href);return true;});
  handle('moki:copy-text',async(text:string)=>{await clipboard.writeText(String(text));return true;});
@@ -65,20 +81,21 @@ function installDesktopBridge(){
   for(const item of await clipboard.read())for(const type of item.types){const raw=/format="([^"]+)"/i.exec(type)?.[1]??type;if(!/^(?:cf_hdrop|filenamew?|text\/uri-list)$/i.test(raw))continue;try{const value=await item.getType(type);if(value instanceof Blob&&value.size<=4*1024*1024)formats.set(raw,Buffer.from(await value.arrayBuffer()));}catch{}}
   return readDesktopClipboardResources({availableFormats:()=>[...formats.keys()],read:name=>formats.get(name)?.toString('utf8')??'',readBuffer:name=>formats.get(name)??Buffer.alloc(0),readText:()=>text});
  });
- const contextMenu=(template:(settle:(action:any)=>void)=>Electron.MenuItemConstructorOptions[])=>new Promise(resolve=>{let settled=false;const settle=(action:unknown)=>{if(!settled){settled=true;resolve(action);}};const items=template(settle);if(!items.length||!activeWindow){settle(null);return;}Menu.buildFromTemplate(items).popup({window:activeWindow,callback:()=>settle(null)});});
- handle('moki:media-menu',(input:Record<string,unknown>)=>contextMenu(settle=>buildMediaContextMenuTemplate({canCopyFrame:input?.canCopyFrame===true,hasPath:input?.hasPath===true,canOpen:input?.canOpen===true},settle)));
- handle('moki:attachment-menu',(input:Record<string,unknown>)=>contextMenu(settle=>buildAttachmentContextMenuTemplate({canOpenDefault:input?.canOpenDefault===true,canOpenLibrary:input?.canOpenLibrary===true,canSaveAs:input?.canSaveAs===true,canReveal:input?.canReveal===true},settle)));
- handle('moki:capture',async(rect:{x:number;y:number;width:number;height:number})=>{if(!activeWindow||![rect.x,rect.y,rect.width,rect.height].every(Number.isFinite)||rect.width<1||rect.height<1)return null;return (await activeWindow.webContents.capturePage({x:Math.round(rect.x),y:Math.round(rect.y),width:Math.round(rect.width),height:Math.round(rect.height)})).toDataURL();});
+ const contextMenu=(win:BrowserWindow,template:(settle:(action:any)=>void)=>Electron.MenuItemConstructorOptions[])=>new Promise(resolve=>{let settled=false;const settle=(action:unknown)=>{if(!settled){settled=true;resolve(action);}};const items=template(settle);if(!items.length||win.isDestroyed()){settle(null);return;}Menu.buildFromTemplate(items).popup({window:win,callback:()=>settle(null)});});
+ handleWindow('moki:media-menu',(win,input:Record<string,unknown>)=>contextMenu(win,settle=>buildMediaContextMenuTemplate({canCopyFrame:input?.canCopyFrame===true,hasPath:input?.hasPath===true,canOpen:input?.canOpen===true},settle)));
+ handleWindow('moki:attachment-menu',(win,input:Record<string,unknown>)=>contextMenu(win,settle=>buildAttachmentContextMenuTemplate({canOpenDefault:input?.canOpenDefault===true,canOpenLibrary:input?.canOpenLibrary===true,canSaveAs:input?.canSaveAs===true,canReveal:input?.canReveal===true},settle)));
+ handleWindow('moki:capture',async(win,rect:{x:number;y:number;width:number;height:number})=>{if(win.isDestroyed()||![rect.x,rect.y,rect.width,rect.height].every(Number.isFinite)||rect.width<1||rect.height<1)return null;return (await win.webContents.capturePage({x:Math.round(rect.x),y:Math.round(rect.y),width:Math.round(rect.width),height:Math.round(rect.height)})).toDataURL();});
  handle('moki:read-resource',(input:{source:string;name?:string})=>readWhiteboardTransferResource(input));
  handle('moki:restore-resources',(resources:DesktopWhiteboardTransferResource[])=>restoreWhiteboardTransferResources(resourceRoot(),resources));
- handle('moki:file-pending',()=>pendingWhiteboards.pending);
+ const ownsPending=(win:BrowserWindow)=>{if(!pendingWhiteboards.pending)return false;if(!fileTarget||fileTarget.isDestroyed())fileTarget=activeWindow&&!activeWindow.isDestroyed()?activeWindow:win;return fileTarget===win;};
+ handleWindow('moki:file-pending',win=>ownsPending(win));
  const requireDocuments=()=>{if(!documents)throw new Error('直接文件编辑需要使用客户端本地服务');return documents;};
- handle('moki:file-consume',async()=>{const path=pendingWhiteboards.take();if(!path)return null;try{return await requireDocuments().read(path);}catch(error){return {name:path,error:String(error)};}});
+ handleWindow('moki:file-consume',async win=>{if(!ownsPending(win))return null;const path=pendingWhiteboards.take();if(!pendingWhiteboards.pending)fileTarget=undefined;if(!path)return null;try{return await requireDocuments().read(path);}catch(error){return {name:path,error:String(error)};}});
  handle('moki:document-read',(path:string)=>requireDocuments().read(path));
  handle('moki:document-bind',(token:string,boardId:string,expectedVersion:number)=>requireDocuments().bind(token,boardId,expectedVersion));
  handle('moki:document-info',(boardId:string)=>requireDocuments().info(boardId));
  handle('moki:document-save',(boardId:string,onlyIfDirty=false)=>requireDocuments().save(boardId,onlyIfDirty));
- handle('moki:document-save-as',async(boardId:string)=>{const board=store!.get(boardId);const result=await dialog.showSaveDialog(activeWindow!,{defaultPath:board.title.replace(/[<>:"/\\|?*\x00-\x1f]/gu,'_')+'.moki',filters:[{name:'MOKI 白板',extensions:['moki']}]});return result.canceled||!result.filePath?null:requireDocuments().saveAs(boardId,result.filePath);});
+ handleWindow('moki:document-save-as',async(win,boardId:string)=>{const board=store!.get(boardId);const result=await dialog.showSaveDialog(win,{defaultPath:board.title.replace(/[<>:"/\\|?*\x00-\x1f]/gu,'_')+'.moki',filters:[{name:'MOKI 白板',extensions:['moki']}]});return result.canceled||!result.filePath?null:requireDocuments().saveAs(boardId,result.filePath);});
 }
 if (process.env.MOKI_WHITEBOARD_SMOKE === "1") app.disableHardwareAcceleration();
 if(process.env.MOKI_WHITEBOARD_PROFILE)app.setPath('userData',process.env.MOKI_WHITEBOARD_PROFILE);
@@ -99,7 +116,7 @@ function createTray(){
   if(image.isEmpty())throw new Error('托盘图标无法读取');
   tray=new Tray(image);tray.setToolTip('MOKI 白板');
   const show=()=>void openWindow().catch(showWindowError);
-  tray.setContextMenu(Menu.buildFromTemplate([{label:'打开 MOKI 白板',click:show},{type:'separator'},{label:'退出 MOKI 白板',click:()=>void lifecycle.quit()}]));
+  updateTrayMenu();
   tray.on('double-click',show);tray.on('click',()=>{if(process.platform!=='darwin')show();});
   desktopSettings!.trayAvailable=true;
  }catch(error){tray?.destroy();tray=undefined;desktopSettings!.trayError='托盘启动失败：'+String(error);console.error(desktopSettings!.trayError);}
@@ -108,7 +125,31 @@ function openWindow(show=true):Promise<void>{
  const reveal=()=>{if(activeWindow&&!activeWindow.isDestroyed()){if(activeWindow.isMinimized())activeWindow.restore();activeWindow.show();activeWindow.focus();}};
  if(activeWindow&&!activeWindow.isDestroyed()){if(show)reveal();return Promise.resolve();}
  if(openingWindow)return openingWindow.then(()=>{if(show)reveal();});
- openingWindow=createWindow(show).finally(()=>{openingWindow=undefined;});return openingWindow;
+ openingWindow=createWindow(show).then(()=>{}).finally(()=>{openingWindow=undefined;});return openingWindow;
+}
+
+function findBoardWindow(id:string,except?:BrowserWindow){return liveWindows().find(win=>win!==except&&(claims.get(win)??boardWindowId(win.webContents.getURL(),localOrigin))===id);}
+async function openBoardWindow(input:unknown,source:BrowserWindow,detach:boolean){
+ const path=boardWindowPath(input),id=String(input);if(lifecycle.quitting)throw new Error('应用正在保存并退出，请稍后重试');
+ if(store)store.get(id);else if(!(await fetch(localOrigin+'/api/boards/'+encodeURIComponent(id))).ok)throw new Error('白板不存在');
+ const pending=boardOpenings.get(id);if(pending){revealWindow(await pending);return;}
+ const moving=detach&&boardWindowId(source.webContents.getURL(),localOrigin)===id;
+ const existing=findBoardWindow(id,moving?source:undefined);if(existing){revealWindow(existing);return;}
+ const opening=createWindow(true,path);boardOpenings.set(id,opening);
+ try{revealWindow(await opening);}finally{if(boardOpenings.get(id)===opening)boardOpenings.delete(id);}
+}
+function updateTrayMenu(){
+ if(!tray||tray.isDestroyed())return;
+ const items=liveWindows().map(win=>({label:(win.getTitle()||'MOKI 白板').slice(0,100)+(win.isVisible()?'':'（已隐藏）'),click:()=>revealWindow(win)}));
+ tray.setContextMenu(Menu.buildFromTemplate([{label:'打开 MOKI 白板',click:()=>void openWindow().catch(showWindowError)},...(items.length?[{label:'已打开的窗口',submenu:items}]:[]),{type:'separator'},{label:'退出 MOKI 白板',click:()=>void lifecycle.quit()}]));
+}
+function closeWindow(win:BrowserWindow,event:Electron.Event){
+ if(lifecycle.exiting||approvedClose.delete(win))return;
+ if(lifecycle.quitting){event.preventDefault();void lifecycle.quit();return;}
+ if(tray&&!tray.isDestroyed()&&desktopSettings?.closeToTray){event.preventDefault();win.hide();updateTrayMenu();return;}
+ if(liveWindows().length<=1){lifecycle.close(event);return;}
+ event.preventDefault();if(closing.has(win))return;
+ const operation=windowSaves.prepare(win).then(()=>{if(!win.isDestroyed()){approvedClose.add(win);win.close();}}).catch(error=>{if(!win.isDestroyed()){revealWindow(win);void cancelWindowClose(win);}dialog.showErrorBox('白板尚未保存，窗口已保留',String(error));}).finally(()=>closing.delete(win));closing.set(win,operation);
 }
 
 async function waitForServer(url: string): Promise<void> {
@@ -119,7 +160,7 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error("MOKI 白板本地服务启动超时");
 }
 
-async function createWindow(show:boolean) {
+async function createWindow(show:boolean,path='/') {
   if (!process.env.MOKI_WHITEBOARD_EXTERNAL_SERVER && !server) {
     const dataPath = process.env.MOKI_WHITEBOARD_DATA ?? (app.isPackaged ? join(app.getPath("userData"), "moki-whiteboard.db") : join(process.cwd(), "data", "moki-whiteboard.db"));
     store=new WhiteboardStore(dataPath);
@@ -135,15 +176,18 @@ async function createWindow(show:boolean) {
   }
   await waitForServer(`${localOrigin}/api/health`);
   const win = new BrowserWindow({ show:false,width: 1440, height: 900, minWidth: 760, minHeight: 560, backgroundColor: "#f2f1f7", title: "MOKI 白板",icon:join(iconRoot(),'moki-whiteboard-icon.png'), webPreferences: { contextIsolation: true, sandbox: true, preload:join(here,'preload.cjs') } });
-  activeWindow=win;
-  win.on('close',event=>lifecycle.close(event));
+  windows.add(win);activeWindow=win;const initialBoard=boardWindowId(localOrigin+path,localOrigin);if(initialBoard)claims.set(win,initialBoard);
+  win.on('focus',()=>{activeWindow=win;updateTrayMenu();});
+  win.on('page-title-updated',()=>setImmediate(updateTrayMenu));
+  const navigated=()=>{claims.delete(win);updateTrayMenu();};win.webContents.on('did-navigate-in-page',navigated);win.webContents.on('did-finish-load',navigated);
+  win.on('close',event=>closeWindow(win,event));
   win.on('query-session-end',()=>{lifecycle.exiting=true;});
-  win.on('closed',()=>{if(activeWindow===win)activeWindow=undefined;});
+  win.on('closed',()=>{windows.delete(win);claims.delete(win);approvedClose.delete(win);if(activeWindow===win)activeWindow=liveWindows().at(-1);if(fileTarget===win){fileTarget=undefined;if(pendingWhiteboards.pending)pendingWhiteboards.add([]);}updateTrayMenu();});
   win.setMenuBarVisibility(false);
   win.webContents.setWindowOpenHandler(({ url }) => { if(isAllowedExternalUrl(url))void shell.openExternal(url); return { action: "deny" }; });
-  await win.loadURL(localOrigin);
+  try{await win.loadURL(localOrigin+path);}catch(error){windows.delete(win);claims.delete(win);win.destroy();throw error;}
   if(show)win.show();
-  if (process.env.MOKI_WHITEBOARD_SMOKE === "1") {
+  if (process.env.MOKI_WHITEBOARD_SMOKE === "1" && path==='/') {
     let result = { title: "", shell: false };
     for (let attempt = 0; attempt < 50 && !result.shell; attempt += 1) {
       result = await win.webContents.executeJavaScript(`({ title: document.title, shell: document.querySelector('.manager-shell, .app-shell') !== null })`) as { title: string; shell: boolean };
@@ -157,7 +201,8 @@ async function createWindow(show:boolean) {
       const waitForBoard=async(title:string)=>{
         for(let i=0;i<100;i++){
           const board=store!.list().find(board=>board.title===title);
-          if(board&&win.webContents.getURL().endsWith('/board/'+board.id)&&await win.webContents.executeJavaScript(`Boolean(document.querySelector('canvas.native-whiteboard-canvas'))`))return store!.get(board.id);
+          const target=board?liveWindows().find(candidate=>candidate.webContents.getURL().endsWith('/board/'+board.id)):undefined;
+          if(board&&target&&await target.webContents.executeJavaScript(`Boolean(document.querySelector('canvas.native-whiteboard-canvas'))`))return store!.get(board.id);
           await new Promise(resolve=>setTimeout(resolve,100));
         }
         throw new Error('File open smoke timeout: '+title);
@@ -181,7 +226,7 @@ async function createWindow(show:boolean) {
       if(reopened.boardId!==initial.id)throw new Error('Reopening created a duplicate document');
       pendingWhiteboards.add(request.runtimePaths);
       await waitForBoard(request.lastTitle);
-      fileOpenSmoke={startup:true,runtimeNotification:true,pageCount:request.pageCount,shapeCount:request.shapeCount,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:!pendingWhiteboards.pending,boardCount:store.list().length};
+      fileOpenSmoke={startup:true,runtimeNotification:true,pageCount:request.pageCount,shapeCount:request.shapeCount,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:!pendingWhiteboards.pending,boardCount:store.list().length,multipleWindows:liveWindows().length===2&&boardWindowId(win.webContents.getURL(),localOrigin)===initial.id};
     }
     let settingsSmoke:Record<string,unknown>|undefined;
     if(process.env.MOKI_WHITEBOARD_SMOKE_SETTINGS==='1'){
@@ -228,7 +273,7 @@ async function createWindow(show:boolean) {
       const previous=desktopSettings.closeToTray;desktopSettings.closeToTray=true;
       win.close();if(win.isDestroyed()||win.isVisible())throw new Error('Close did not retain hidden window');
       if(!(await fetch(`${localOrigin}/api/health`)).ok)throw new Error('Background service stopped');
-      await openWindow();if(!win.isVisible()||activeWindow!==win)throw new Error('Tray restore did not reuse window');
+      revealWindow(win);if(!win.isVisible()||activeWindow!==win)throw new Error('Tray restore did not reuse window');
       desktopSettings.closeToTray=previous;
       lifecycleSmoke={trayCreated:true,closeToTray:true,backgroundService:true,restoreSameWindow:true};
     }
@@ -236,6 +281,7 @@ async function createWindow(show:boolean) {
     const failed=!result.shell||!bridge.preload||!bridge.portable||(process.env.MOKI_WHITEBOARD_SMOKE_BOARD&&!native);
     setTimeout(() => {process.exitCode=failed?1:0;app.quit();}, 250);
   }
+  updateTrayMenu();return win;
 }
 
 if(primary)app.whenReady().then(async () => {

@@ -12,6 +12,7 @@ type LifecycleActions={
 export class DesktopLifecycle {
  exiting=false;
  private pending:Promise<void>|undefined;
+ get quitting(){return Boolean(this.pending)||this.exiting;}
  constructor(private readonly actions:LifecycleActions){}
  close(event:CloseEvent){
   if(this.exiting)return;

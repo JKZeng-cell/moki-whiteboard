@@ -1,3 +1,5 @@
+// Desktop whiteboard windows keep Agent selection and compose state independent.
+const contextStorage=()=>window.mokiDesktop?.windows?window.sessionStorage:window.localStorage;
 export const WORKBENCH_SELECTION_STORAGE_KEY = "moki.current-workbench-selection";
 export const WORKBENCH_SELECTION_EVENT = "workbench:selection-context-changed";
 export const MOKI_ASSISTANT_COMPOSE_STORAGE_KEY = "moki.pending-assistant-compose";
@@ -259,9 +261,9 @@ export function replaceWorkbenchSelectionContext(
 ): void {
   try {
     if (selection) {
-      window.localStorage.setItem(WORKBENCH_SELECTION_STORAGE_KEY, JSON.stringify(selection));
+      contextStorage().setItem(WORKBENCH_SELECTION_STORAGE_KEY, JSON.stringify(selection));
     } else {
-      window.localStorage.removeItem(WORKBENCH_SELECTION_STORAGE_KEY);
+      contextStorage().removeItem(WORKBENCH_SELECTION_STORAGE_KEY);
     }
   } catch {
     // Same-window consumers still receive the event when storage is blocked.
@@ -275,7 +277,7 @@ export function replaceWorkbenchSelectionContext(
 
 export function readWorkbenchSelectionContext(): WorkbenchSelectionContext | undefined {
   try {
-    const raw = window.localStorage.getItem(WORKBENCH_SELECTION_STORAGE_KEY);
+    const raw = contextStorage().getItem(WORKBENCH_SELECTION_STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as unknown;
     if (!isWorkbenchSelectionContext(parsed) || parsed.itemCount <= 0 || !parsed.content.trim()) {
@@ -315,7 +317,7 @@ export function subscribeWorkbenchSelectionContext(
     listener(isWorkbenchSelectionContext(detail) ? detail : readWorkbenchSelectionContext());
   };
   const storageUpdate = (event: StorageEvent) => {
-    if (event.key === WORKBENCH_SELECTION_STORAGE_KEY) update();
+    if (!window.mokiDesktop?.windows && event.key === WORKBENCH_SELECTION_STORAGE_KEY) update();
   };
   window.addEventListener(WORKBENCH_SELECTION_EVENT, localUpdate);
   window.addEventListener("storage", storageUpdate);
@@ -327,7 +329,7 @@ export function subscribeWorkbenchSelectionContext(
 
 export function readPendingMokiAssistantComposeRequest(options: { consume?: boolean } = {}): MokiAssistantComposeRequest | undefined {
   try {
-    const raw = window.localStorage.getItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
+    const raw = contextStorage().getItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as Partial<MokiAssistantComposeRequest>;
     if (
@@ -335,7 +337,7 @@ export function readPendingMokiAssistantComposeRequest(options: { consume?: bool
       (!parsed.prompt.trim() && parsed.emptyComposer !== true) ||
       typeof parsed.capturedAt !== "string"
     ) return undefined;
-    if (options.consume) window.localStorage.removeItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
+    if (options.consume) contextStorage().removeItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
     const anchor = parsed.anchor;
     return {
       prompt: parsed.prompt.slice(0, 20_000),
@@ -366,7 +368,7 @@ export function requestMokiAssistance(
     ...(options.editorAssist === true ? { editorAssist: true } : {}),
   };
   try {
-    window.localStorage.setItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY, JSON.stringify(request));
+    contextStorage().setItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY, JSON.stringify(request));
   } catch {
     // Same-window fallback below still works when storage is blocked.
   }
@@ -381,7 +383,7 @@ export function requestMokiAssistance(
 export function closeMokiEditorAssistance(): void {
   clearWorkbenchSelectionContext("library");
   try {
-    window.localStorage.removeItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
+    contextStorage().removeItem(MOKI_ASSISTANT_COMPOSE_STORAGE_KEY);
   } catch {
     // The lifecycle event still closes the same-window editor assistant.
   }

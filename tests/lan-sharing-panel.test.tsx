@@ -9,6 +9,7 @@ function setup(addresses=[{name:'Wi-Fi',address:'192.168.1.2'}]){
  let state:LanSharingState={enabled:true,port:4323,addresses,links:[{boardId:'board',title:'创意白板',createdAt:'2026-11-05',urls:addresses.map(item=>'http://'+item.address+':4323/share/token')}]};
  const copy=vi.fn(async()=>true);window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,copyText:copy};
  const fetch=vi.fn(async(path:string,init?:RequestInit)=>{
+  if(path.startsWith('/api/sharing/visits'))return new Response(JSON.stringify({total:0,onlineCount:0,page:1,pageSize:20,items:[]}));
   expect(path).not.toBe('/api/boards');if(new Headers(init?.headers).get('content-type')==='application/json')expect(init?.body).toBeDefined();
   if(init?.method==='PUT'){const enabled=JSON.parse(String(init.body)).enabled;state={...state,enabled,port:enabled?4323:null,links:enabled?state.links:[]};}
   if(init?.method==='DELETE')state={...state,links:[]};return new Response(JSON.stringify(state));
@@ -23,4 +24,7 @@ it('lists existing shared boards with copy and cancellation instead of a board p
 });
 it('allows cancellation without a LAN address while disabling unusable copy links',async()=>{
  setup([]);render(<LanSharingPanel/>);await screen.findByRole('list',{name:'已共享白板列表'});expect(screen.getByRole('button',{name:'复制 创意白板 的共享链接'})).toBeDisabled();fireEvent.click(screen.getByRole('button',{name:'取消共享 创意白板'}));await screen.findByText(/暂无已共享的白板/);
+});
+it('opens per-board history and keeps the global history entry after revocation',async()=>{
+ setup();render(<LanSharingPanel/>);await screen.findByRole('list',{name:'已共享白板列表'});fireEvent.click(screen.getByRole('button',{name:'查看 创意白板 的历史访问'}));await screen.findByText(/暂无访问记录/);fireEvent.click(screen.getByRole('button',{name:'返回已共享白板'}));fireEvent.click(screen.getByRole('button',{name:'取消共享 创意白板'}));await screen.findByText(/暂无已共享的白板/);fireEvent.click(screen.getByRole('button',{name:'全部访问记录'}));await screen.findByText('全部历史访问');
 });

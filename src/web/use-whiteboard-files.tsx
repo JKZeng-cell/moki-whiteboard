@@ -1,10 +1,10 @@
-import {useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {FolderOpen} from 'lucide-react';
 import {importWhiteboardTransferFile,isWhiteboardTransferFile} from '../vendor/moki/web/lib/whiteboard-transfer.js';
 import {apiFetch} from '../vendor/moki/web/lib/api-fetch.js';
 import type {DesktopWhiteboardOpenRequest} from '../vendor/moki/shared/desktop-whiteboard-transfer-contract.js';
 
-type Options={checkpoint:()=>Promise<void>;open:(id:string)=>void;error:(message:string)=>void};
+type Options={checkpoint:()=>Promise<void>;open:(id:string)=>void|Promise<void>;error:(message:string)=>void};
 export function useWhiteboardFiles(options:Options){
  const latest=useRef(options);latest.current=options;
  const input=useRef<HTMLInputElement>(null),queue=useRef(Promise.resolve());
@@ -22,7 +22,7 @@ export function useWhiteboardFiles(options:Options){
       const path=file instanceof File?window.mokiDesktop?.getPathForFile?.(file):undefined;
       const request=file instanceof File?(path&&bridge?.readDocument?await bridge.readDocument(path):undefined):file;
       if(request?.error)throw new Error(request.error);
-      if(request?.boardId){if(request.warning)latest.current.error(request.warning);latest.current.open(request.boardId);continue;}
+      if(request?.boardId){if(request.warning)latest.current.error(request.warning);await latest.current.open(request.boardId);continue;}
       const source=request?.bytes?new File([Uint8Array.from(request.bytes).buffer],request.name):file instanceof File?file:undefined;
       if(!source)throw new Error('无法读取白板文件');
       const imported=await importWhiteboardTransferFile(source,bridge?.restoreResources?{restoreResources:resources=>bridge.restoreResources!(resources)}:{});
@@ -31,7 +31,7 @@ export function useWhiteboardFiles(options:Options){
       const body=await response.json();
       if(!response.ok)throw new Error(body.error??'导入失败');
       if(request?.documentToken){if(!bridge?.bindDocument)throw new Error('客户端不支持直接文件编辑');await bridge.bindDocument(request.documentToken,body.id,body.version);}
-      latest.current.open(body.id);
+      await latest.current.open(body.id);
      }catch(error){latest.current.error(`${file.name}：${error instanceof Error?error.message:String(error)}`);}
     }
    }catch(error){latest.current.error(error instanceof Error?error.message:String(error));}
@@ -69,5 +69,6 @@ export function useWhiteboardFiles(options:Options){
   return()=>{disposed=true;unsubscribe?.();window.removeEventListener('drop',drop,true);window.removeEventListener('dragover',over,true);};
  },[]);
  const controls=<><button className="native-app-control" title="打开白板文件" aria-label="打开白板文件" disabled={busy} onClick={()=>input.current?.click()}><FolderOpen size={18}/></button><input ref={input} type="file" aria-label="选择白板文件" accept=".moki,.moki-board,.moki.json,.moki-board.json" multiple hidden onChange={event=>{const files=Array.from(event.currentTarget.files??[]);event.currentTarget.value='';if(files.length)enqueue.current(files);}}/></>;
- return {controls,busy};
+ const waitForIdle=useCallback(()=>queue.current,[]);
+ return {controls,busy,waitForIdle};
 }

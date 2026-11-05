@@ -39,7 +39,7 @@ try{
  const code=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',resolve);});clearTimeout(timeout);
  assert.equal(code,0,errors+'\n'+output);
  const report=output.split(/\r?\n/).map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(value=>value?.fileOpenSmoke);
- assert.deepEqual(report?.fileOpenSmoke,{startup:true,runtimeNotification:true,pageCount:2,shapeCount:4,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:true,boardCount:3});
+ assert.deepEqual(report?.fileOpenSmoke,{startup:true,runtimeNotification:true,pageCount:2,shapeCount:4,mappedFolderRestored:true,buttonWriteBack:true,shortcutWriteBack:true,reopenSameBoard:true,queueDrained:true,boardCount:3,multipleWindows:true});
  const savedArchive=unzipSync(await readFile(firstFile)),savedManifest=JSON.parse(strFromU8(savedArchive['manifest.json']));
  assert.ok(JSON.stringify(savedManifest.snapshot).includes('文件按钮保存验收'));
  assert.ok(JSON.stringify(savedManifest.snapshot).includes('文件快捷键保存验收'));

@@ -9,6 +9,12 @@ import {McpTransportSwitch} from '../src/web/mcp-transport-switch.js';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const item:BoardSummary={id:'test-board',title:'测试白板',version:1,updatedAt:new Date().toISOString(),pageCount:1,shapeCount:0,thumbnail:{version:1,capturedAt:new Date().toISOString()}};
 describe('白板管理表单',()=>{
+ it('仅在客户端支持时提供新窗口入口，且不在当前窗口打开白板',()=>{
+  const open=vi.fn(),newWindow=vi.fn();render(<BoardManager items={[item]} open={open} onOpenWindow={newWindow} refresh={async()=>{}} controls={null}/>);fireEvent.click(screen.getByRole('button',{name:'更多操作 测试白板'}));fireEvent.click(screen.getByRole('menuitem',{name:'新窗口打开 测试白板'}));expect(newWindow).toHaveBeenCalledWith(item.id);expect(open).not.toHaveBeenCalled();
+ });
+ it('编辑页支持移到新窗口，并在打开过程中禁用重复操作',()=>{
+  const next=vi.fn();render(<NativeControlsContext.Provider value={{back:vi.fn(),settings:vi.fn(),newWindow:next,openingWindow:true}}><WorkbenchPageHeader title="测试白板"/></NativeControlsContext.Provider>);expect((screen.getByRole('button',{name:'在新窗口打开白板'}) as HTMLButtonElement).disabled).toBe(true);
+ });
  it('更多菜单支持键盘导航、共享和关闭，操作不打开白板',()=>{
   const open=vi.fn(),share=vi.fn();render(<BoardManager items={[item]} open={open} refresh={async()=>{}} controls={null} onShare={share}/>);
   expect(screen.queryByRole('menu')).toBeNull();const trigger=screen.getByRole('button',{name:'更多操作 测试白板'});fireEvent.click(trigger);

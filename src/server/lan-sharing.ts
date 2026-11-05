@@ -11,6 +11,7 @@ import type {WhiteboardStore} from './store.js';
 import type {BoardDocument} from '../core/types.js';
 import type {LanSharingState,SharedAttachment} from '../shared/lan-sharing-contract.js';
 import {ResourceCache} from './resource-cache.js';
+import {SharingVisits} from './sharing-visits.js';
 
 export function isPrivateAddress(raw:string){
  const address=raw.replace(/^::ffff:/u,'');
@@ -43,7 +44,9 @@ export class LanSharing {
  private listener:FastifyInstance|undefined;
  private currentPort:number|null=null;
  private operations:Promise<unknown>=Promise.resolve();
+ private readonly visits:SharingVisits;
  constructor(private readonly store:WhiteboardStore,private readonly webRoot:string,private readonly options:{port?:number;addresses?:typeof lanAddresses}={}){
+  this.visits=new SharingVisits(store.db);
   store.db.exec(`CREATE TABLE IF NOT EXISTS lan_sharing_settings (id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL,port INTEGER,preference_set INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE IF NOT EXISTS lan_shared_boards (token TEXT PRIMARY KEY,board_id TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL);`);
   if(!store.db.prepare('PRAGMA table_info(lan_sharing_settings)').all().some(column=>column.name==='preference_set')){
@@ -56,15 +59,15 @@ export class LanSharing {
  }
  private enabled(){return Boolean(this.store.db.prepare('SELECT enabled FROM lan_sharing_settings WHERE id=1').get()?.enabled);}
  state():LanSharingState{
-  const addresses=(this.options.addresses??lanAddresses)();
-  const links=(this.store.db.prepare('SELECT s.*,b.title FROM lan_shared_boards s JOIN boards b ON b.id=s.board_id ORDER BY s.created_at DESC').all() as unknown as Array<LinkRow&{title:string}>).map(row=>({boardId:row.board_id,title:row.title,createdAt:row.created_at,urls:this.currentPort&&this.enabled()?addresses.map(item=>`http://${item.address}:${this.currentPort}/share/${row.token}`):[]}));
+  const addresses=(this.options.addresses??lanAddresses)(),stats=this.visits.stats();
+  const links=(this.store.db.prepare('SELECT s.*,b.title FROM lan_shared_boards s JOIN boards b ON b.id=s.board_id ORDER BY s.created_at DESC').all() as unknown as Array<LinkRow&{title:string}>).map(row=>({boardId:row.board_id,title:row.title,createdAt:row.created_at,...(stats.get(row.board_id)??{onlineCount:0,visitCount:0}),urls:this.currentPort&&this.enabled()?addresses.map(item=>`http://${item.address}:${this.currentPort}/share/${row.token}`):[]}));
   return {enabled:this.enabled()&&Boolean(this.listener),port:this.currentPort,addresses,links};
  }
  async restore(){if(this.enabled())try{await this.start();}catch(error){this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0 WHERE id=1').run();console.error('局域网共享未能启动：',String(error));}}
  set(enabled:boolean):Promise<LanSharingState>{
   const next=this.operations.catch(()=>{}).then(async()=>{
    if(enabled){await this.start();this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=1,port=?,preference_set=1 WHERE id=1').run(this.currentPort);}
-   else {this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0,preference_set=1 WHERE id=1').run();this.store.db.prepare('DELETE FROM lan_shared_boards').run();await this.close();}
+   else {this.visits.end();this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0,preference_set=1 WHERE id=1').run();this.store.db.prepare('DELETE FROM lan_shared_boards').run();await this.close();}
    return this.state();
   });this.operations=next;return next;
  }
@@ -72,7 +75,8 @@ export class LanSharing {
   this.store.get(boardId);if(!this.listener||!this.enabled())throw new Error('请先开启局域网共享');
   this.store.db.prepare('INSERT OR IGNORE INTO lan_shared_boards VALUES (?,?,?)').run(randomBytes(24).toString('base64url'),boardId,new Date().toISOString());return this.state();
  }
- revoke(boardId:string){this.store.db.prepare('DELETE FROM lan_shared_boards WHERE board_id=?').run(boardId);return this.state();}
+ history(boardId:string|undefined,page:number,pageSize:number){if(boardId)this.store.get(boardId);return this.visits.history(boardId,page,pageSize);}
+ revoke(boardId:string){this.visits.end(boardId);this.store.db.prepare('DELETE FROM lan_shared_boards WHERE board_id=?').run(boardId);return this.state();}
  private board(token:string){
   if(!this.enabled())throw denied();
   const row=this.store.db.prepare('SELECT * FROM lan_shared_boards WHERE token=?').get(token) as LinkRow|undefined;
@@ -118,7 +122,13 @@ export class LanSharing {
    // Do not disclose local filesystem paths, library identifiers or private session data.
    const scrub=(value:unknown):unknown=>Array.isArray(value)?value.map(scrub):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([key])=>!['localPath','target','libraryItemId','sourcePath'].includes(key)).map(([key,item])=>[key,scrub(item)])):value;
    const clean=scrub(snapshot) as typeof snapshot;clean.session={currentPageId:snapshot.session?.currentPageId};
-   return {title:board.title,version:board.version,snapshot:clean,attachments};
+   if(request.method==='GET')this.visits.touch(board.id,token,request.headers['x-moki-viewer-id'],request.headers['x-moki-view-session'],request.ip,String(request.headers['user-agent']??''));
+   return {title:board.title,version:board.version,snapshot:clean,attachments,onlineCount:this.visits.online(board.id)};
+  });
+  shared.get('/share-api/:token/presence',async request=>{
+   const token=(request.params as {token:string}).token,board=this.board(token);
+   if(request.method==='GET'&&(request.query as {leave?:string}).leave==='1')this.visits.leave(token,request.headers['x-moki-viewer-id'],request.headers['x-moki-view-session']);
+   return {onlineCount:this.visits.online(board.id)};
   });
   shared.get('/share-api/:token/asset/:id',async(request,reply)=>{
    const {token,id}=request.params as {token:string;id:string};const board=this.board(token);
@@ -146,12 +156,15 @@ export class LanSharing {
    const item=JSON.parse(String(row.item_json));if(item.kind==='local_file'&&typeof item.target==='string')return item.target;
   }
  }
+ // Keep leases across a server restart: still-open guest tabs resume heartbeats with the same ID.
+ // Explicit disable/revoke ends visits; abandoned leases expire after SHARED_VISITOR_TTL.
  async close(){const listener=this.listener;this.listener=undefined;this.currentPort=null;if(listener)await listener.close();}
 }
 export async function registerLanSharing(app:FastifyInstance,store:WhiteboardStore,webRoot:string){
  const sharing=new LanSharing(store,webRoot);await sharing.restore();
  const owner=(request:FastifyRequest)=>{if(!localAddress(request.ip.replace(/^::ffff:/u,''))||!localAddress(hostname(request.headers.host??''))||request.headers.origin&&!localAddress(hostname(request.headers.origin)))throw Object.assign(new Error('仅本机可管理共享设置'),{statusCode:403});};
  app.get('/api/sharing',async request=>{owner(request);return sharing.state();});
+ app.get('/api/sharing/visits',async request=>{owner(request);const query=z.object({boardId:z.string().min(1).optional(),page:z.coerce.number().int().min(1).max(1000000).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20)}).parse(request.query);return sharing.history(query.boardId,query.page,query.pageSize);});
  app.put('/api/sharing',async request=>{owner(request);return sharing.set(z.object({enabled:z.boolean()}).parse(request.body).enabled);});
  app.post('/api/sharing/boards/:id',async request=>{owner(request);return sharing.create(z.object({id:z.string().min(1)}).parse(request.params).id);});
  app.delete('/api/sharing/boards/:id',async request=>{owner(request);return sharing.revoke(z.object({id:z.string().min(1)}).parse(request.params).id);});

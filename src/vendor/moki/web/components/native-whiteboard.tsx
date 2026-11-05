@@ -112,6 +112,7 @@ import {
   visualAnnotationsFromSelection,
 } from "../lib/workbench-selection-context.js";
 import { storeVisualSelectionImage } from "../lib/visual-selection.js";
+import {nativeClipboardFromHtml,inlineClipboardImageFromHtml} from '../lib/whiteboard-clipboard-html.js';
 
 export {
   NATIVE_WHITEBOARD_CLIPBOARD_TEXT_PREFIX,
@@ -121,6 +122,7 @@ export {
 declare global {
   interface Window {
     mokiDesktop?: {
+      windows?:{openBoard(boardId:string,detachCurrent?:boolean):Promise<void>;focusBoard(boardId:string):Promise<boolean>};
       desktopSettings?: import('../../../../shared/desktop-settings-contract.js').DesktopSettingsBridge;
       resourceCache?: import('../../../../shared/resource-cache-contract.js').ResourceCacheBridge;
       appearance?: {
@@ -1726,6 +1728,15 @@ export class NativeWhiteboardEditor {
 
   getSelectedShapeIds(): string[] {
     return [...this.selected];
+  }
+
+  /** View selection never changes stacking order, document records, or undo history. */
+  selectForViewing(ids:string[],expandGroups=true):void{
+    const current=visibleShapes(this.store.snapshot),selected=new Set<string>();
+    for(const id of ids){const shape=current.find(shape=>shape.id===id);if(!shape)continue;const group=expandGroups&&shape.type!=='group-folder'?nativeGroupId(shape):undefined;
+      if(group)current.filter(member=>nativeGroupId(member)===group&&member.type!=='group-folder').forEach(member=>selected.add(member.id));else selected.add(id);
+    }
+    this.selected=selected;this.refresh?.();
   }
 
   copySelectedShapes(): string | undefined {
@@ -4025,6 +4036,9 @@ export function NativeWhiteboard({
   viewStateKey,
   readOnly=false,
   onReadonlyShapeOpen,
+  onReadonlySelectionChange,
+  onReadonlyGroupToggle,
+  onReadonlyContextMenu,
   onMount,
   maxAssetSize: _maxAssetSize,
   color = "black",
@@ -4052,6 +4066,9 @@ export function NativeWhiteboard({
   viewStateKey?:string;
   readOnly?:boolean;
   onReadonlyShapeOpen?:(shapeId:string)=>void;
+  onReadonlySelectionChange?:(ids:string[])=>void;
+  onReadonlyGroupToggle?:(groupId:string,collapsed:boolean)=>void;
+  onReadonlyContextMenu?:(point:{x:number;y:number})=>void;
   onMount?: (editor: NativeWhiteboardEditor) => void;
   maxAssetSize?: number;
   color?: NativeCanvasColor;
@@ -4128,6 +4145,7 @@ export function NativeWhiteboard({
   const [selectedPaintMenuOpen, setSelectedPaintMenuOpen] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const [clipboardNotice, setClipboardNotice] = useState("");
+  const readonlySpaceRef=useRef(false);
   const readonlyLinkPressRef=useRef<{id:string;x:number;y:number;moved:boolean}|undefined>(undefined);
   const [pageMenuOpen, setPageMenuOpen] = useState(false);
   const [pageQuery, setPageQuery] = useState("");
@@ -4217,9 +4235,11 @@ export function NativeWhiteboard({
   }, [trimImageCache]);
   const editor = useMemo(() => new NativeWhiteboardEditor(store), [store]);
   editor.attachViewMemory({...pageViews,write:(page,view)=>{if(viewReady.current)pageViews.write(page,view);}});
-  useEffect(()=>{if(readOnly){editor.select();editor.setCurrentTool('hand');}},[editor,readOnly]);
+  useEffect(()=>{if(readOnly){editor.selectForViewing([]);editor.setCurrentTool('select');}},[editor,readOnly]);
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
+  const selectReadonly=useCallback((ids:string[])=>{editor.selectForViewing(ids);onReadonlySelectionChange?.(editor.getSelectedShapeIds());refresh();drawAgainRef.current();},[editor,onReadonlySelectionChange,refresh]);
+  useEffect(()=>{if(!readOnly)return;const down=(event:KeyboardEvent)=>{if(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable=true],video,audio,[role=menu]'))return;if(event.code==='Space'){if(event.target instanceof Element&&event.target.closest('button'))return;event.preventDefault();readonlySpaceRef.current=true;}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){if(document.querySelector('[aria-modal=true]'))return;event.preventDefault();selectReadonly([...editor.getCurrentPageShapeIds()]);}if(event.key==='Escape')selectReadonly([]);};const up=(event:KeyboardEvent)=>{if(event.code==='Space')readonlySpaceRef.current=false;};const blur=()=>{readonlySpaceRef.current=false;};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur);};},[editor,readOnly,selectReadonly]);
   editor.attachRefresh(refresh);
   editor.attachImageHandlers(preloadImageSources, cachePreviewImage);
   editor.attachCameraChange((camera) => {
@@ -4250,7 +4270,7 @@ export function NativeWhiteboard({
         }], { history: false });
       });
     }
-  }, [editor, revision, store]);
+  }, [editor, revision, store, readOnly]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -4268,6 +4288,7 @@ export function NativeWhiteboard({
   }, [editor, refresh]);
 
   useEffect(() => {
+    if (readOnly) return;
     if (visualAnnotationsFromSelection(readWorkbenchSelectionContext()).length) return;
     const ids = editor.getSelectedShapeIds();
     const selected = ids
@@ -4364,7 +4385,7 @@ export function NativeWhiteboard({
       });
     }, 220);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [editor, revision, store]);
+  }, [editor, revision, store, readOnly]);
   useEffect(() => () => clearWorkbenchSelectionContext("whiteboard"), []);
 
   const eventPoint = useCallback((event: { clientX: number; clientY: number }) => {
@@ -4498,7 +4519,7 @@ export function NativeWhiteboard({
       )
         ? plainText.slice(NATIVE_WHITEBOARD_CLIPBOARD_TEXT_PREFIX.length)
         : "";
-      const serialized = customSerialized || textSerialized || (
+      const serialized = customSerialized || textSerialized || nativeClipboardFromHtml(readClipboardData('text/html')) || (
         clipboardTypes.length === 0 ? copiedElementsRef.current : ""
       );
       let invalidNativeClipboard = false;
@@ -4516,6 +4537,12 @@ export function NativeWhiteboard({
         if (customSerialized || textSerialized) {
           invalidNativeClipboard = true;
         }
+      }
+      const inlineImage=inlineClipboardImageFromHtml(readClipboardData('text/html'));
+      if(inlineImage&&onImageFiles&&!customSerialized&&!textSerialized){
+        event.preventDefault();
+        void fetch(inlineImage).then(response=>response.blob()).then(blob=>onImageFiles([new File([blob],'白板图片',{type:blob.type})],editor.getViewportPageBounds().center)).catch(()=>announceClipboard('图片粘贴失败，请重新复制图片'));
+        return;
       }
       const pastedImageUrl = customSerialized || textSerialized
         ? undefined
@@ -4883,7 +4910,10 @@ export function NativeWhiteboard({
       const selectedArrowEndpoints = selectedShapes.length === 1
         ? nativeArrowEndpoints(selectedShapes[0]!)
         : undefined;
-      if (selectedArrowEndpoints) {
+      if(readOnly&&selectedFrame){
+        context.save();context.translate(selectedFrame.center.x,selectedFrame.center.y);context.rotate(selectedFrame.rotation*Math.PI/180);context.strokeStyle=selectionTheme.stroke;context.lineWidth=1.75/camera.zoom;context.setLineDash([6/camera.zoom,4/camera.zoom]);context.strokeRect(-selectedFrame.w/2,-selectedFrame.h/2,selectedFrame.w,selectedFrame.h);context.restore();
+        if(expandedGroupId)drawNativeGroupToggleButton(context,nativeExpandedGroupCollapseButtonBounds(selectedFrame,camera.zoom),'collapse');
+      }else if (selectedArrowEndpoints) {
         const handleRadius = 6 / camera.zoom;
         context.save();
         context.strokeStyle = selectionTheme.stroke;
@@ -4975,7 +5005,7 @@ export function NativeWhiteboard({
           );
         }
       }
-      if (selectedShapes.length === 1 && selectedShapes[0]!.type === "bezier") {
+      if (!readOnly && selectedShapes.length === 1 && selectedShapes[0]!.type === "bezier") {
         const shape = selectedShapes[0]!;
         const anchors = nativeBezierAnchors(shape);
         context.save();
@@ -5165,7 +5195,7 @@ export function NativeWhiteboard({
       }
       if (hasLoadingImages) drawAgainRef.current();
     });
-  }, [arrowStyle, color, drawColor, drawSize, editor, ensureImageLoaded, store]);
+  }, [arrowStyle, color, drawColor, drawSize, editor, ensureImageLoaded, store,readOnly]);
   drawAgainRef.current = scheduleDraw;
 
   useEffect(() => {
@@ -5439,8 +5469,21 @@ export function NativeWhiteboard({
     const point = eventPoint(event);
     const tool = readOnly?'hand':editor.getCurrentTool();
     const hit = hitShape(point);
-    readonlyLinkPressRef.current=readOnly&&event.button===0&&hit?.type==='link'?{id:hit.id,x:event.clientX,y:event.clientY,moved:false}:undefined;
+    readonlyLinkPressRef.current=readOnly&&!readonlySpaceRef.current&&editor.getCurrentTool()!=='hand'&&event.button===0&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey&&hit?.type==='link'?{id:hit.id,x:event.clientX,y:event.clientY,moved:false}:undefined;
     if (event.button === 2) return;
+    if(readOnly){
+      event.preventDefault();window.getSelection()?.removeAllRanges();event.currentTarget.setPointerCapture(event.pointerId);
+      const selected=editor.getSelectedShapeIds().map(id=>editor.getShape(id)).filter((shape):shape is NativeWhiteboardShape=>Boolean(shape)),frame=selectionFrame(selected),group=selectedExpandedGroupId(selected);
+      if(group&&frame&&pointInNativeBounds(point,nativeExpandedGroupCollapseButtonBounds(frame,cameraRef.current.zoom))){readonlyLinkPressRef.current=undefined;onReadonlyGroupToggle?.(group,true);return;}
+      if(hit?.type==='group-folder'&&pointInNativeBounds(point,nativeGroupFolderToggleButtonBounds(nativeShapeBounds(hit)))){const groupId=nativeGroupId(hit);if(groupId){readonlyLinkPressRef.current=undefined;onReadonlyGroupToggle?.(groupId,false);}return;}
+      const pan=event.button===1||readonlySpaceRef.current||editor.getCurrentTool()==='hand';
+      if(pan){event.currentTarget.dataset.panning='true';actionRef.current={kind:'pan',start:{x:event.clientX,y:event.clientY},camera:{...cameraRef.current}};return;}
+      if(hit){const additive=event.shiftKey||event.ctrlKey||event.metaKey,current=editor.getSelectedShapeIds(),groupId=nativeGroupId(hit);
+        const ids=additive?(current.includes(hit.id)?current.filter(id=>id!==hit.id&&(!groupId||nativeGroupId(editor.getShape(id))!==groupId)):[...current,hit.id]):[hit.id];
+        selectReadonly(ids);actionRef.current={kind:'pan',start:{x:event.clientX,y:event.clientY},camera:{...cameraRef.current}};
+      }else{const additive=event.shiftKey||event.ctrlKey||event.metaKey,initial=editor.getSelectedShapeIds();if(!additive)selectReadonly([]);actionRef.current={kind:'marquee',start:point,current:point,initial,additive};}
+      return;
+    }
     if ((tool === "text" || tool === "geo") && event.button === 0) {
       const acceptedTypes = tool === "text" ? new Set(["text", "note"]) : new Set(["geo"]);
       const selectionIds = editor.getSelectedShapeIds();
@@ -5706,7 +5749,7 @@ export function NativeWhiteboard({
     draftRef.current = [point];
     actionRef.current = { kind: tool === "draw" ? "draw" : "create", start: point, points: [point] };
     scheduleDraw();
-  }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, readOnly, scheduleDraw]);
+  }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, readOnly, scheduleDraw,selectReadonly,onReadonlyGroupToggle]);
 
   const pointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const press=readonlyLinkPressRef.current;
@@ -5715,7 +5758,7 @@ export function NativeWhiteboard({
     if (!action) {
       const tool = editor.getCurrentTool();
       const point = eventPoint(event);
-      if(readOnly&&hitShape(point)?.type==='link'){event.currentTarget.style.setProperty('cursor','pointer','important');return;}
+      if(readOnly){event.currentTarget.style.setProperty('cursor',hitShape(point)?.type==='link'?'pointer':editor.getCurrentTool()==='hand'||readonlySpaceRef.current?'grab':'default','important');return;}
       const selectedShape = editor.getSelectedShapeIds().length === 1
         ? editor.getShape(editor.getSelectedShapeIds()[0]!) : undefined;
       if ((tool === "select" || tool === "pen") && hitBezierHandle(point, selectedShape, cameraRef.current.zoom)) {
@@ -5993,7 +6036,7 @@ export function NativeWhiteboard({
   }, [editor, eventPoint, hitArrowAtPoint, hitShape, readOnly, refresh, scheduleDraw, store]);
 
   const pointerUp = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if(event.type==='pointercancel')readonlyLinkPressRef.current=undefined;
+    if(event.type==='pointercancel'){readonlyLinkPressRef.current=undefined;if(readOnly){actionRef.current=undefined;marqueeRef.current=undefined;delete event.currentTarget.dataset.panning;event.currentTarget.style.removeProperty('cursor');scheduleDraw();return;}}
     delete event.currentTarget.dataset.panning;
     event.currentTarget.style.removeProperty("cursor");
     const action = actionRef.current; actionRef.current = undefined;
@@ -6028,7 +6071,8 @@ export function NativeWhiteboard({
           return bounds.x <= right && bounds.x + bounds.w >= left && bounds.y <= bottom && bounds.y + bounds.h >= top;
         })
         .map((shape) => shape.id);
-      editor.setSelection(action.additive ? [...new Set([...action.initial, ...matches])] : matches);
+      if(readOnly)selectReadonly(action.additive?[...new Set([...action.initial,...matches])]:matches);
+      else editor.setSelection(action.additive ? [...new Set([...action.initial, ...matches])] : matches);
       marqueeRef.current = undefined;
       scheduleDraw();
       return;
@@ -6078,7 +6122,7 @@ export function NativeWhiteboard({
       editor.select(id);
     }
     draftRef.current = []; scheduleDraw();
-  }, [arrowStyle, color, drawColor, drawSize, editor, eventPoint, geoPaintStyle, scheduleDraw, store]);
+  }, [arrowStyle, color, drawColor, drawSize, editor, eventPoint, geoPaintStyle, scheduleDraw, store,readOnly,selectReadonly]);
 
   const doubleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const tool = editor.getCurrentTool();
@@ -6854,7 +6898,7 @@ export function NativeWhiteboard({
       })()
     : undefined;
   return (
-    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
+    <div ref={rootRef} onPointerDownCapture={event=>{if(readOnly&&(event.target as Element).closest('video,audio')){const shape=hitShape(eventPoint(event));if(shape)selectReadonly([shape.id]);}}} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape?.type==='group-folder'){const group=nativeGroupId(shape);if(group)onReadonlyGroupToggle?.(group,false);}else if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){if((event.target as Element).closest('[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;event.preventDefault();event.stopPropagation();const shape=hitShape(eventPoint(event));if(shape&&!editor.getSelectedShapeIds().includes(shape.id))selectReadonly([shape.id]);else if(!shape)selectReadonly([]);const rect=rootRef.current!.getBoundingClientRect();onReadonlyContextMenu?.({x:event.clientX-rect.left,y:event.clientY-rect.top});}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
         ref={canvasRef}
         className="native-whiteboard-canvas block h-full w-full touch-none"
@@ -6914,7 +6958,7 @@ export function NativeWhiteboard({
           }}
         />
       ) : null}
-      {!textDraft && selectedMindMapNode && selectedMindMapInputPoint && selectedMindMapNode.props.mokiMindMapRoot !== true ? (
+      {!readOnly && !textDraft && selectedMindMapNode && selectedMindMapInputPoint && selectedMindMapNode.props.mokiMindMapRoot !== true ? (
         <button
           type="button"
           data-mind-map-connector="parent"
@@ -6939,7 +6983,7 @@ export function NativeWhiteboard({
           onPointerCancel={() => setMindMapConnectionDraft(undefined)}
         />
       ) : null}
-      {!textDraft && selectedMindMapNode && selectedMindMapOutputPoint ? (
+      {!readOnly && !textDraft && selectedMindMapNode && selectedMindMapOutputPoint ? (
         <button
           type="button"
           data-mind-map-connector="child"
@@ -6964,7 +7008,7 @@ export function NativeWhiteboard({
           onPointerCancel={() => setMindMapConnectionDraft(undefined)}
         />
       ) : null}
-      {!textDraft && selectedMindMapNode && selectedMindMapToolbarPosition ? (
+      {!readOnly && !textDraft && selectedMindMapNode && selectedMindMapToolbarPosition ? (
         <div
           aria-label="思维导图节点操作"
           data-whiteboard-control-surface
@@ -7029,7 +7073,7 @@ export function NativeWhiteboard({
           ) : null}
         </div>
       ) : null}
-      {shapeContextMenu ? (
+      {!readOnly && shapeContextMenu ? (
         <div
           ref={shapeContextMenuRef}
           role="menu"
@@ -7200,7 +7244,7 @@ export function NativeWhiteboard({
           })()}
         </div>
       ) : null}
-      {shapeContextMenu && folderColorMenu && !renamingFolderId && !editingFolderDescriptionId && editor.getSelectedShapeIds().length === 1 && editor.getShape(editor.getSelectedShapeIds()[0]!)?.type === "group-folder" ? createPortal(
+      {!readOnly && shapeContextMenu && folderColorMenu && !renamingFolderId && !editingFolderDescriptionId && editor.getSelectedShapeIds().length === 1 && editor.getShape(editor.getSelectedShapeIds()[0]!)?.type === "group-folder" ? createPortal(
         <div ref={folderColorMenuRef} id={folderColorMenuId} role="menu" aria-label="资料夹颜色" data-whiteboard-control-surface className="moki-menu-surface fixed z-[100] flex items-center justify-between gap-2 p-2" style={{left: folderColorMenu.left, top: folderColorMenu.top, width: 224}} onPointerDown={event => event.stopPropagation()}>
           {["#776bd8", "#5086d7", "#36a391", "#e79d45", "#ce668a", "#7d8799"].map(value => {
             const folder = editor.getShape(editor.getSelectedShapeIds()[0]!);
@@ -7451,7 +7495,7 @@ export function NativeWhiteboard({
           />
         </>
       )}
-      {!textDraft && selectedTextToolbarPosition && (
+      {!readOnly && !textDraft && selectedTextToolbarPosition && (
         <div
           aria-label="选中文字工具"
           data-whiteboard-control-surface
@@ -7481,7 +7525,7 @@ export function NativeWhiteboard({
           />
         </div>
       )}
-      {!textDraft && selectedPaintToolbarPosition && (
+      {!readOnly && !textDraft && selectedPaintToolbarPosition && (
         <div
           aria-label="选中内容样式"
           data-whiteboard-control-surface

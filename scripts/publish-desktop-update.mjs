@@ -39,9 +39,9 @@ for(const platform of ['windows','macos']){
  assert.equal(local.packaged,true);assert.equal(local.native,true);assert.equal(local.tools,16);assert.equal(local.protocolErrors,0);assert.equal(local.stdioReadWrite,true);assert.equal(local.office.viewerStatus,200);
  assert.equal(local.settingsSmoke.appVersion,version);assert.equal(local.settingsSmoke.tabs,4);assert.equal(local.settingsSmoke.desktopSettings,true);assert.equal(local.settingsSmoke.agentInstructions,true);
  for(const key of ['trayCreated','closeToTray','backgroundService','restoreSameWindow'])assert.equal(local.lifecycleSmoke[key],true);
- assert.equal(opening.packaged,true);for(const key of ['startup','runtimeNotification','buttonWriteBack','shortcutWriteBack','reopenSameBoard','mappedFolderRestored'])assert.equal(opening.fileOpenSmoke[key],true);
+ assert.equal(opening.packaged,true);for(const key of ['startup','runtimeNotification','buttonWriteBack','shortcutWriteBack','reopenSameBoard','mappedFolderRestored','multipleWindows'])assert.equal(opening.fileOpenSmoke[key],true);
  assert.equal(source.passed,true);assert.equal(source.compiledSourceIdentical,true);assert.equal(source.sourceCommit,sourceCommit);assert.equal(source.version,version);assert.ok(source.sourceFiles>0);
- nativeChecks[platform]={packaged:true,mcpTools:16,protocolErrors:0,officeViewer:true,settings:true,trayLifecycle:true,originalFileSaveAndReopen:true,compiledSourceIdentical:true,sourceFiles:source.sourceFiles};
+ nativeChecks[platform]={packaged:true,mcpTools:16,protocolErrors:0,officeViewer:true,settings:true,trayLifecycle:true,originalFileSaveAndReopen:true,multipleBoardWindows:true,compiledSourceIdentical:true,sourceFiles:source.sourceFiles};
 }
 const mac=await read('macos','macos-release-verification.json');assert.equal(mac.version,version);assert.equal(mac.arch,'arm64');assert.equal(mac.binaryArch,'arm64');for(const key of ['zipIntegrity','dmgIntegrity','smokeTestedExtractedZIP'])assert.equal(mac[key],true);
 const win=await read('windows','artifact-audit.json');assert.equal(win.version,version);

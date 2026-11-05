@@ -81,3 +81,31 @@ describe('LAN read-only sharing',()=>{
   for(const request of [{headers:{origin:'https://evil.example'}},{headers:{host:'192.168.1.2'}},{remoteAddress:'192.168.1.5'},{headers:{host:'127.0.0.1.evil.example',origin:'http://127.0.0.1.evil.example'}}])expect((await app.inject({url:'/api/sharing',...request})).statusCode).toBe(403);
  });
 });
+
+
+describe('shared visitor telemetry',()=>{
+ it('lets an open visitor resume counting after the sharing server restarts',async()=>{
+  const {base,token,sharing,store,board,web}=await setup(),headers={'x-moki-viewer-id':'viewer_browser_123456','x-moki-view-session':'visit_session_123456'};
+  await fetch(base+'/share-api/'+token+'/board',{headers});await sharing.close();const restarted=new LanSharing(store,web,{port:0,addresses:()=>[]});cleanup.push(()=>restarted.close());await restarted.restore();
+  const next='http://127.0.0.1:'+restarted.state().port;expect((await (await fetch(next+'/share-api/'+token+'/board',{headers})).json()).onlineCount).toBe(1);expect(restarted.history(board.id,1,20).total).toBe(1);
+ });
+ it('tracks board visits without modifying content and exposes history only to the owner',async()=>{
+  const {base,token,sharing,store,board,app}=await setup(),before=JSON.stringify(store.get(board.id));
+  const headers={'x-moki-viewer-id':'viewer_browser_123456','x-moki-view-session':'visit_session_123456','user-agent':'Mozilla Windows Chrome/130 Edg/130'};
+  await fetch(base+'/share-api/'+token+'/board',{method:'HEAD',headers});expect(sharing.history(board.id,1,20).total).toBe(0);
+  for(let i=0;i<3;i++){const response=await fetch(base+'/share-api/'+token+'/board',{headers});const value=await response.json();expect(value.onlineCount).toBe(1);expect(value).not.toHaveProperty('visits');expect(value).not.toHaveProperty('address');}
+  expect(sharing.state().links[0]).toMatchObject({onlineCount:1,visitCount:1});expect(JSON.stringify(store.get(board.id))).toBe(before);
+  const history=await app.inject({url:'/api/sharing/visits?boardId='+board.id});expect(history.statusCode).toBe(200);expect(history.json()).toMatchObject({total:1,onlineCount:1,items:[{address:'127.0.0.1',client:'Edge · Windows',boardId:board.id}]});
+  for(const path of ['/api/sharing/visits','/share-api/'+token+'/visits'])expect((await fetch(base+path)).status).toBe(404);
+  for(const request of [{remoteAddress:'192.168.0.8'},{headers:{origin:'https://evil.example'}}])expect((await app.inject({url:'/api/sharing/visits',...request})).statusCode).toBe(403);
+  expect((await app.inject({url:'/api/sharing/visits?pageSize=101'})).statusCode).toBe(400);
+  await fetch(base+'/share-api/'+token+'/presence?leave=1',{method:'HEAD',headers});expect(sharing.state().links[0]!.onlineCount).toBe(1);
+  const leave=await fetch(base+'/share-api/'+token+'/presence?leave=1',{headers});expect(await leave.json()).toEqual({onlineCount:0});
+  sharing.revoke(board.id);expect(sharing.history(board.id,1,20)).toMatchObject({total:1,onlineCount:0});expect((await fetch(base+'/share-api/'+token+'/presence')).status).toBe(404);
+ });
+ it('rejects foreign-origin presence and keeps historical records after sharing is disabled',async()=>{
+  const {base,token,sharing,board}=await setup(),headers={'x-moki-viewer-id':'viewer_browser_123456','x-moki-view-session':'visit_session_123456'};
+  expect((await fetch(base+'/share-api/'+token+'/board',{headers:{...headers,origin:'https://evil.example'}})).status).toBe(403);expect(sharing.history(board.id,1,20).total).toBe(0);
+  await fetch(base+'/share-api/'+token+'/board',{headers});await sharing.set(false);expect(sharing.history(board.id,1,20)).toMatchObject({total:1,onlineCount:0});
+ });
+});
