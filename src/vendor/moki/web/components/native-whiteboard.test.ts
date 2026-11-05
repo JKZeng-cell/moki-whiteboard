@@ -149,6 +149,16 @@ function mockCanvas() {
 }
 
 describe('read-only shared whiteboard controls',()=>{
+ it('opens a link on one click, suppresses duplicate double-click opens, and ignores drags and cancellations',()=>{
+  mockCanvas();const store=new NativeWhiteboardStore(),seed=new NativeWhiteboardEditor(store),open=vi.fn();seed.createShapes([{id:'shape:link',type:'link',x:100,y:100,props:{w:300,h:80,title:'官网',url:'https://example.com'}}]);
+  let editor:NativeWhiteboardEditor|undefined;const {container}=render(createElement(NativeWhiteboard,{store,readOnly:true,onMount:value=>{editor=value;},onReadonlyShapeOpen:open}));
+  editor!.resetView();const canvas=container.querySelector('canvas')!;const before=structuredClone(store.snapshot.document);
+  const pointer=(type:string,x=140,y=130)=>{const event=new MouseEvent(type,{bubbles:true,clientX:x,clientY:y,button:0});Object.defineProperty(event,'pointerId',{value:1});fireEvent(canvas,event);};
+  pointer('pointerdown');pointer('pointerup');fireEvent.click(canvas,{clientX:140,clientY:130,detail:1});expect(open).toHaveBeenCalledExactlyOnceWith('shape:link');
+  pointer('pointerdown');pointer('pointerup');fireEvent.click(canvas,{clientX:140,clientY:130,detail:2});fireEvent.doubleClick(canvas,{clientX:140,clientY:130});expect(open).toHaveBeenCalledOnce();
+  pointer('pointerdown');pointer('pointermove',170,150);pointer('pointermove');pointer('pointerup');fireEvent.click(canvas,{clientX:140,clientY:130,detail:1});expect(open).toHaveBeenCalledOnce();
+  editor!.resetView();pointer('pointerdown');pointer('pointercancel');fireEvent.click(canvas,{clientX:140,clientY:130,detail:1});expect(open).toHaveBeenCalledOnce();expect(store.snapshot.document).toEqual(before);
+ });
  it('keeps grouped page search and switching while hiding mutations and ignoring paste',()=>{
   mockCanvas();const store=new NativeWhiteboardStore(),seed=new NativeWhiteboardEditor(store),first=seed.getCurrentPageId();
   seed.renamePage(first,'素材页');seed.createPageGroup(first,'参考素材');const second=seed.createPage();seed.renamePage(second,'展示页');seed.setCurrentPage(first);

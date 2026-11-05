@@ -25,3 +25,4 @@ html[data-color-scheme=dark] .native-mcp-modal{background:#242a3c;color:#eef0f8}
 .native-mcp-modal{max-height:calc(100dvh - 40px);overflow-y:auto}.native-mcp-modal pre{max-height:220px;overflow-y:auto}.native-app-error{bottom:90px;max-width:calc(100vw - 40px)}
 @media(max-width:600px){.manager-shell{padding:20px 14px}.manager-header{align-items:flex-start;flex-direction:column;gap:12px}.manager-content{padding:18px}.manager-section-title{align-items:flex-start;flex-direction:column}.moki-native-page{padding:10px}}
  .whiteboard-file-progress{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000;padding:10px 18px;border-radius:12px;background:var(--whiteboard-control-bg,#fff);color:var(--whiteboard-control-text,#625bc5);box-shadow:0 4px 20px #0002;pointer-events:none;font-size:13px;}
+html[data-color-scheme=dark] #root .whiteboard-canvas-frame{border-color:#30384c!important;box-shadow:0 12px 38px rgba(5,8,18,.12)}

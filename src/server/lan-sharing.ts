@@ -44,9 +44,15 @@ export class LanSharing {
  private currentPort:number|null=null;
  private operations:Promise<unknown>=Promise.resolve();
  constructor(private readonly store:WhiteboardStore,private readonly webRoot:string,private readonly options:{port?:number;addresses?:typeof lanAddresses}={}){
-  store.db.exec(`CREATE TABLE IF NOT EXISTS lan_sharing_settings (id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL,port INTEGER);
-   INSERT OR IGNORE INTO lan_sharing_settings VALUES(1,0,NULL);
+  store.db.exec(`CREATE TABLE IF NOT EXISTS lan_sharing_settings (id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL,port INTEGER,preference_set INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE IF NOT EXISTS lan_shared_boards (token TEXT PRIMARY KEY,board_id TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL);`);
+  if(!store.db.prepare('PRAGMA table_info(lan_sharing_settings)').all().some(column=>column.name==='preference_set')){
+   store.db.exec('ALTER TABLE lan_sharing_settings ADD COLUMN preference_set INTEGER NOT NULL DEFAULT 0');
+   // Legacy UI users could only turn sharing off after enabling it, which saved a port.
+   store.db.exec('UPDATE lan_sharing_settings SET preference_set=1 WHERE port IS NOT NULL OR enabled=1');
+  }
+  store.db.exec(`INSERT OR IGNORE INTO lan_sharing_settings (id,enabled,port,preference_set) VALUES(1,1,NULL,0);
+   UPDATE lan_sharing_settings SET enabled=1 WHERE preference_set=0 AND port IS NULL;`);
  }
  private enabled(){return Boolean(this.store.db.prepare('SELECT enabled FROM lan_sharing_settings WHERE id=1').get()?.enabled);}
  state():LanSharingState{
@@ -57,8 +63,8 @@ export class LanSharing {
  async restore(){if(this.enabled())try{await this.start();}catch(error){this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0 WHERE id=1').run();console.error('局域网共享未能启动：',String(error));}}
  set(enabled:boolean):Promise<LanSharingState>{
   const next=this.operations.catch(()=>{}).then(async()=>{
-   if(enabled){await this.start();this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=1,port=? WHERE id=1').run(this.currentPort);}
-   else {this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0 WHERE id=1').run();this.store.db.prepare('DELETE FROM lan_shared_boards').run();await this.close();}
+   if(enabled){await this.start();this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=1,port=?,preference_set=1 WHERE id=1').run(this.currentPort);}
+   else {this.store.db.prepare('UPDATE lan_sharing_settings SET enabled=0,preference_set=1 WHERE id=1').run();this.store.db.prepare('DELETE FROM lan_shared_boards').run();await this.close();}
    return this.state();
   });this.operations=next;return next;
  }

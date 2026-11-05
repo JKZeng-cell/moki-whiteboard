@@ -3,21 +3,24 @@ import '@testing-library/jest-dom/vitest';
 import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {LanSharingPanel} from '../src/web/lan-sharing-panel.js';
+import type {LanSharingState} from '../src/shared/lan-sharing-contract.js';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();delete window.mokiDesktop;});
-it('enables sharing, creates and copies a per-board read-only link, revokes it and turns sharing off',async()=>{
- let state={enabled:false,port:null as number|null,addresses:[{name:'Wi-Fi',address:'192.168.1.2'}],links:[] as Array<{boardId:string;title:string;createdAt:string;urls:string[]}>};
+function setup(addresses=[{name:'Wi-Fi',address:'192.168.1.2'}]){
+ let state:LanSharingState={enabled:true,port:4323,addresses,links:[{boardId:'board',title:'创意白板',createdAt:'2026-11-05',urls:addresses.map(item=>'http://'+item.address+':4323/share/token')}]};
  const copy=vi.fn(async()=>true);window.mokiDesktop={captureWhiteboardLinkPreview:async()=>null,copyText:copy};
- vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{
-  if(new Headers(init?.headers).get('content-type')==='application/json')expect(init?.body).toBeDefined();
-  if(path==='/api/boards')return new Response(JSON.stringify({items:[{id:'board',title:'创意白板'}]}));
+ const fetch=vi.fn(async(path:string,init?:RequestInit)=>{
+  expect(path).not.toBe('/api/boards');if(new Headers(init?.headers).get('content-type')==='application/json')expect(init?.body).toBeDefined();
   if(init?.method==='PUT'){const enabled=JSON.parse(String(init.body)).enabled;state={...state,enabled,port:enabled?4323:null,links:enabled?state.links:[]};}
-  if(init?.method==='POST')state={...state,links:[{boardId:'board',title:'创意白板',createdAt:'2026-11-04',urls:['http://192.168.1.2:4323/share/token']}]};
-  if(init?.method==='DELETE')state={...state,links:[]};
-  return new Response(JSON.stringify(state));
- }));
- render(<LanSharingPanel currentBoardId="board"/>);await waitFor(()=>expect(screen.getByRole('switch',{name:'局域网共享'})).not.toBeDisabled());
- fireEvent.click(screen.getByRole('switch',{name:'局域网共享'}));await screen.findByRole('button',{name:'生成分享链接'});fireEvent.click(screen.getByRole('button',{name:'生成分享链接'}));
- await screen.findByText('仅供查看');fireEvent.click(screen.getByRole('button',{name:'复制 创意白板 的共享链接'}));await waitFor(()=>expect(copy).toHaveBeenCalledWith('http://192.168.1.2:4323/share/token'));
- fireEvent.click(screen.getByRole('button',{name:'停止分享 创意白板'}));await waitFor(()=>expect(screen.queryByText('仅供查看')).toBeNull());
- fireEvent.click(screen.getByRole('switch',{name:'局域网共享'}));await waitFor(()=>expect(screen.queryByRole('button',{name:'生成分享链接'})).toBeNull());
+  if(init?.method==='DELETE')state={...state,links:[]};return new Response(JSON.stringify(state));
+ });vi.stubGlobal('fetch',fetch);return {copy,fetch};
+}
+it('lists existing shared boards with copy and cancellation instead of a board picker',async()=>{
+ const {copy,fetch}=setup();render(<LanSharingPanel/>);await screen.findByRole('list',{name:'已共享白板列表'});
+ expect(screen.queryByRole('combobox',{name:'选择共享白板'})).toBeNull();expect(screen.queryByRole('button',{name:'生成分享链接'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'复制 创意白板 的共享链接'}));await waitFor(()=>expect(copy).toHaveBeenCalledWith('http://192.168.1.2:4323/share/token'));
+ fireEvent.click(screen.getByRole('button',{name:'取消共享 创意白板'}));await screen.findByText(/暂无已共享的白板/);expect(fetch).toHaveBeenCalledWith('/api/sharing/boards/board',{method:'DELETE'});
+ expect(screen.getByRole('switch',{name:'局域网共享'})).toBeChecked();fireEvent.click(screen.getByRole('switch',{name:'局域网共享'}));await screen.findByText(/局域网共享已关闭/);expect(screen.getByRole('switch',{name:'局域网共享'})).not.toBeChecked();
+});
+it('allows cancellation without a LAN address while disabling unusable copy links',async()=>{
+ setup([]);render(<LanSharingPanel/>);await screen.findByRole('list',{name:'已共享白板列表'});expect(screen.getByRole('button',{name:'复制 创意白板 的共享链接'})).toBeDisabled();fireEvent.click(screen.getByRole('button',{name:'取消共享 创意白板'}));await screen.findByText(/暂无已共享的白板/);
 });

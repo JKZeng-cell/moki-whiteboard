@@ -17,6 +17,18 @@ async function setup(){
  return {root,web,store,app,sharing,board,other,token,base};
 }
 describe('LAN read-only sharing',()=>{
+ it('starts enabled for new data without automatically sharing any board, and remembers manual off across restart',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'moki-lan-default-')),store=new WhiteboardStore(join(root,'test.db'));
+  let sharing=new LanSharing(store,root,{port:0,addresses:()=>[]});cleanup.push(async()=>{await sharing.close();store.close();await rm(root,{recursive:true,force:true});});
+  await sharing.restore();expect(sharing.state()).toMatchObject({enabled:true,links:[]});expect(sharing.state().port).toBeGreaterThan(0);
+  await sharing.set(false);sharing=new LanSharing(store,root,{port:0,addresses:()=>[]});await sharing.restore();expect(sharing.state()).toMatchObject({enabled:false,port:null,links:[]});
+ });
+ it.each([{port:null,enabled:true},{port:4323,enabled:false}])('migrates legacy defaults while preserving a previously disabled preference (port=$port)',async({port,enabled})=>{
+  const root=await mkdtemp(join(tmpdir(),'moki-lan-legacy-')),store=new WhiteboardStore(join(root,'test.db'));
+  store.db.exec('CREATE TABLE lan_sharing_settings (id INTEGER PRIMARY KEY,enabled INTEGER NOT NULL,port INTEGER)');store.db.prepare('INSERT INTO lan_sharing_settings VALUES(1,0,?)').run(port);
+  const sharing=new LanSharing(store,root,{port:0,addresses:()=>[]});cleanup.push(async()=>{await sharing.close();store.close();await rm(root,{recursive:true,force:true});});
+  await sharing.restore();expect(sharing.state().enabled).toBe(enabled);expect(sharing.state().links).toEqual([]);
+ });
  it('allows LAN and loopback addresses while excluding public addresses',()=>{
   for(const address of ['127.0.0.1','::ffff:192.168.1.3','10.1.2.3','172.16.0.1','172.31.255.2','169.254.1.2'])expect(isPrivateAddress(address)).toBe(true);
   for(const address of ['8.8.8.8','172.32.0.1','192.167.1.1','198.18.0.1','999.1.2.3','127.0.0.1.evil.example'])expect(isPrivateAddress(address)).toBe(false);

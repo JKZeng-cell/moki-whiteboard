@@ -8,6 +8,7 @@ import type {SharedAttachment} from '../shared/lan-sharing-contract.js';
 import {SharedMaterialPreview,type SharedMaterial} from './shared-material-preview.js';
 import {useTheme} from './use-theme.js';
 import {rememberedWhiteboardPage} from '../vendor/moki/web/lib/whiteboard-view-memory.js';
+import {installSharedCanvasWheelZoom} from './shared-canvas-wheel.js';
 type SharedBoard={title:string;version:number;snapshot:WhiteboardSnapshot;attachments:SharedAttachment[]};
 const VIEW_SHORTCUTS=[{label:'拖动画布',keys:'拖动空白处'},{label:'缩放画布',keys:'Ctrl / ⌘ + 滚轮'},{label:'适配当前页面',keys:'Ctrl / ⌘ + 0'},{label:'重置视图',keys:'Home'},{label:'画布全屏',keys:'F'},{label:'快捷键提示',keys:'?'},{label:'关闭弹窗 / 退出全屏',keys:'Esc'}];
 export function SharedWhiteboard({token}:{token:string}){
@@ -15,6 +16,7 @@ export function SharedWhiteboard({token}:{token:string}){
  const [board,setBoard]=useState<SharedBoard>(),[page,setPage]=useState(''),[error,setError]=useState(''),[materials,setMaterials]=useState(false),[query,setQuery]=useState('');
  const [preview,setPreview]=useState<SharedMaterial>(),[shortcuts,setShortcuts]=useState(false),[fullscreen,setFullscreen]=useState(false),[exportError,setExportError]=useState('');
  const {dark,setMode}=useTheme();
+ useEffect(()=>installSharedCanvasWheelZoom(document),[]);
  const mount=useMemo(()=>(value:NativeWhiteboardEditor)=>{editor.current=value;setPage(value.getCurrentPageId());},[]);
  useEffect(()=>store.listen(()=>setPage(editor.current?.getCurrentPageId()??'')),[store]);
  useEffect(()=>{let live=true,pending=false,last=0;const load=async()=>{
@@ -44,7 +46,7 @@ export function SharedWhiteboard({token}:{token:string}){
  const exportImage=async()=>{setExportError('');try{downloadNativeWhiteboardImage(await exportNativeWhiteboardImage(store.snapshot as Parameters<typeof exportNativeWhiteboardImage>[0],{scope:'canvas',pageId:editor.current?.getCurrentPageId()??page,fileName:board?.title??'共享白板'}));}catch(error){setExportError(error instanceof Error?error.message:String(error));}};
  const viewButton='grid size-9 place-items-center rounded-xl border border-[#e2e4ed] bg-white/95 text-[#30364d] shadow-sm transition hover:bg-[#f0efff]';
  return <main className="moki-native-page shared-whiteboard-shell"><WorkbenchPageHeader eyebrow="MOKI CANVAS" title={board?.title??'MOKI 白板共享'} description="局域网共享 · 仅供查看" actions={<><span className="shared-readonly-badge"><Eye size={14}/>只读查看</span><button className="native-app-control" aria-label="切换外观" onClick={()=>setMode(dark?'light':'dark')}>{dark?<Sun size={16}/>:<Moon size={16}/>}</button></>}/>
- {error?<section role="alert" className="shared-unavailable">{error}</section>:board?<div className={'whiteboard-canvas shared-canvas relative min-h-0 flex-1'+(fullscreen?' shared-canvas-fullscreen':'')}><NativeWhiteboard store={store} readOnly viewStateKey={'share:'+token} onMount={mount} onReadonlyShapeOpen={id=>{const material=currentMaterials.find(item=>item.shapeId===id);if(material?.previewUrl)setPreview(material);else if(material)open(material);}}/>
+ {error?<section role="alert" className="shared-unavailable">{error}</section>:board?<div className={'whiteboard-canvas-frame whiteboard-canvas shared-canvas relative min-h-0 flex-1'+(fullscreen?' shared-canvas-fullscreen':'')}><NativeWhiteboard store={store} readOnly viewStateKey={'share:'+token} onMount={mount} onReadonlyShapeOpen={id=>{const record=store.snapshot.document.store[id];if(record?.typeName==='shape'&&record.type==='link'){const props=record.props as Record<string,unknown>;open({shapeId:id,name:String(props.title??'链接'),kind:'link',openUrl:String(props.url??'')});return;}const material=currentMaterials.find(item=>item.shapeId===id);if(material?.previewUrl)setPreview(material);else if(material)open(material);}}/>
  <WhiteboardMaterialsPanel materialPanelOpen={materials} setMaterialPanelOpen={setMaterials} currentMaterials={currentMaterials} filteredMaterials={filtered} materialQuery={query} setMaterialQuery={setQuery} locateMaterial={locate} setPreviewMaterial={showPreview} openMaterial={open} canOpenMaterial={material=>Boolean(material.openUrl)}/>
  <button type="button" data-whiteboard-control-button aria-label={fullscreen?'退出画布全屏':'画布全屏'} title={fullscreen?'退出全屏（Esc）':'画布全屏'} aria-pressed={fullscreen} onClick={()=>setFullscreen(value=>!value)} className={'absolute right-3 top-3 z-30 '+viewButton}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
  <button type="button" data-whiteboard-control-button aria-label="导出白板图片" title="导出当前页面为 PNG 图片" onClick={()=>void exportImage()} className={'absolute right-14 top-3 z-30 '+viewButton}><Download size={16}/></button>

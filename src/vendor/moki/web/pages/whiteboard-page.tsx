@@ -3048,7 +3048,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
 
         <div className={`${isCanvasFullscreen
           ? "fixed inset-0 z-[1000] overflow-hidden bg-white"
-          : "relative min-h-0 flex-1 overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_12px_38px_rgba(58,64,98,.08)]"
+          : "whiteboard-canvas-frame relative min-h-0 flex-1 overflow-hidden rounded-[24px] border border-white/90 bg-white shadow-[0_12px_38px_rgba(58,64,98,.08)]"
         }`}>
           {!ready ? (
             <PageFeedback title="正在加载本地白板" description="正在恢复白板内容和上次浏览的位置。" />

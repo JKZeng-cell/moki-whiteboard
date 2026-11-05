@@ -4128,6 +4128,7 @@ export function NativeWhiteboard({
   const [selectedPaintMenuOpen, setSelectedPaintMenuOpen] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const [clipboardNotice, setClipboardNotice] = useState("");
+  const readonlyLinkPressRef=useRef<{id:string;x:number;y:number;moved:boolean}|undefined>(undefined);
   const [pageMenuOpen, setPageMenuOpen] = useState(false);
   const [pageQuery, setPageQuery] = useState("");
   const [collapsedPageGroupIds, setCollapsedPageGroupIds] = useState<Set<string>>(() => new Set());
@@ -5438,6 +5439,7 @@ export function NativeWhiteboard({
     const point = eventPoint(event);
     const tool = readOnly?'hand':editor.getCurrentTool();
     const hit = hitShape(point);
+    readonlyLinkPressRef.current=readOnly&&event.button===0&&hit?.type==='link'?{id:hit.id,x:event.clientX,y:event.clientY,moved:false}:undefined;
     if (event.button === 2) return;
     if ((tool === "text" || tool === "geo") && event.button === 0) {
       const acceptedTypes = tool === "text" ? new Set(["text", "note"]) : new Set(["geo"]);
@@ -5704,13 +5706,16 @@ export function NativeWhiteboard({
     draftRef.current = [point];
     actionRef.current = { kind: tool === "draw" ? "draw" : "create", start: point, points: [point] };
     scheduleDraw();
-  }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, scheduleDraw]);
+  }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, readOnly, scheduleDraw]);
 
   const pointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    const press=readonlyLinkPressRef.current;
+    if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>=4)press.moved=true;
     const action = actionRef.current;
     if (!action) {
       const tool = editor.getCurrentTool();
       const point = eventPoint(event);
+      if(readOnly&&hitShape(point)?.type==='link'){event.currentTarget.style.setProperty('cursor','pointer','important');return;}
       const selectedShape = editor.getSelectedShapeIds().length === 1
         ? editor.getShape(editor.getSelectedShapeIds()[0]!) : undefined;
       if ((tool === "select" || tool === "pen") && hitBezierHandle(point, selectedShape, cameraRef.current.zoom)) {
@@ -5985,9 +5990,10 @@ export function NativeWhiteboard({
       return;
     }
     action.points.push(point); draftRef.current = action.points; scheduleDraw();
-  }, [editor, eventPoint, hitArrowAtPoint, hitShape, refresh, scheduleDraw, store]);
+  }, [editor, eventPoint, hitArrowAtPoint, hitShape, readOnly, refresh, scheduleDraw, store]);
 
   const pointerUp = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    if(event.type==='pointercancel')readonlyLinkPressRef.current=undefined;
     delete event.currentTarget.dataset.panning;
     event.currentTarget.style.removeProperty("cursor");
     const action = actionRef.current; actionRef.current = undefined;
@@ -6848,7 +6854,7 @@ export function NativeWhiteboard({
       })()
     : undefined;
   return (
-    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape)onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
+    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
         ref={canvasRef}
         className="native-whiteboard-canvas block h-full w-full touch-none"
@@ -6856,6 +6862,10 @@ export function NativeWhiteboard({
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}
         onPointerCancel={pointerUp}
+        onClick={event=>{
+          const press=readonlyLinkPressRef.current;readonlyLinkPressRef.current=undefined;
+          if(readOnly&&press&&!press.moved&&event.detail<=1&&Math.hypot(event.clientX-press.x,event.clientY-press.y)<4&&hitShape(eventPoint(event))?.id===press.id)onReadonlyShapeOpen?.(press.id);
+        }}
         onDoubleClick={doubleClick}
         onContextMenu={(event) => {
           event.preventDefault();

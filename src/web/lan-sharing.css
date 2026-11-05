@@ -1,3 +1,31 @@
 .settings-lan-sharing{margin-top:22px;border-top:1px solid #e2e4ed;padding-top:12px}.settings-share-create,.settings-share-link>div{display:flex;align-items:center;gap:8px}.settings-share-create{margin-top:14px}.settings-share-create select,.settings-share-select select,.settings-share-link input{min-width:0;flex:1;border:1px solid #dfe2ec;border-radius:10px;padding:10px;background:transparent;color:inherit;font-size:12px}.settings-share-create button,.settings-share-link button{display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}.settings-share-link{margin-top:12px;border:1px solid #e2e4ed;border-radius:12px;padding:12px}.settings-share-link>strong{display:flex;gap:10px;align-items:center;font-size:12px;margin-bottom:9px;overflow-wrap:anywhere}.settings-share-link>strong span{font-size:10px;font-weight:500;color:#9297a7}.settings-share-link button{padding:8px;border:0;background:transparent;color:#625bc5;border-radius:8px;font-size:11px}.settings-share-link button:hover{background:#f0efff}.settings-share-select{display:flex;gap:10px;align-items:center;font-size:12px;margin-top:12px}
 html[data-color-scheme=dark] .settings-lan-sharing,html[data-color-scheme=dark] .settings-share-link,html[data-color-scheme=dark] .settings-share-link input,html[data-color-scheme=dark] .settings-share-create select,html[data-color-scheme=dark] .settings-share-select select,html[data-color-scheme=dark] .shared-canvas,html[data-color-scheme=dark] .shared-whiteboard-shell select{border-color:#3a4157}html[data-color-scheme=dark] .settings-share-link button,html[data-color-scheme=dark] .shared-materials a{color:#b0a9ff}html[data-color-scheme=dark] .shared-whiteboard-shell{color:#eef0f8;background:#171c2b}html[data-color-scheme=dark] .shared-materials{background:#242a3c;border-color:#3a4157}
 @media(max-width:600px){.settings-share-create{flex-wrap:wrap}.settings-share-create select{flex-basis:100%}}
+/* Keep native scrollbar arrows and tracks inside the rounded settings surface. */
+.native-mcp-modal.native-settings-modal{display:flex;flex-direction:column;overflow:hidden;padding:0;min-height:0}
+.settings-dialog-header{flex-shrink:0;padding:32px 32px 0}
+.settings-dialog-header .settings-tabs{margin-bottom:18px}
+.settings-dialog-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 26px 26px 32px;scrollbar-width:thin;scrollbar-color:#b7b5cd transparent}
+.settings-dialog-scroll::-webkit-scrollbar{width:6px;height:6px}
+.settings-dialog-scroll::-webkit-scrollbar-track{background:transparent}
+.settings-dialog-scroll::-webkit-scrollbar-thumb{border-radius:999px;background:#b7b5cd}
+.settings-dialog-scroll::-webkit-scrollbar-thumb:hover{background:#918bbf}
+.settings-dialog-scroll::-webkit-scrollbar-button{display:none;width:0;height:0}
+.settings-dialog-scroll .settings-lan-sharing>h3{margin-top:14px}
+.settings-shared-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.settings-shared-heading h4{font-size:13px;font-weight:700}
+.settings-shared-heading>span{font-size:11px;color:#9297a7}
+.settings-shared-boards{display:grid;gap:10px;list-style:none;margin:0;padding:0}
+.settings-shared-boards .settings-share-link{margin-top:0}
+.settings-share-link>strong{flex-wrap:wrap}
+.settings-share-link>strong span{white-space:nowrap}
+.settings-share-link .settings-share-revoke{margin:8px 0 -3px auto;color:#ba4c64}
+.settings-share-link .settings-share-revoke:hover{background:#fff0f3}
+.native-settings-modal .settings-shared-empty{padding:14px;border:1px dashed #dfe2ec;border-radius:12px;font-size:12px;line-height:1.8}
+html[data-color-scheme=dark] .settings-dialog-scroll{scrollbar-color:#576078 transparent}
+html[data-color-scheme=dark] .settings-dialog-scroll::-webkit-scrollbar-thumb{background:#576078}
+html[data-color-scheme=dark] .settings-dialog-scroll::-webkit-scrollbar-thumb:hover{background:#74749c}
+html[data-color-scheme=dark] .settings-shared-empty{border-color:#3a4157}
+html[data-color-scheme=dark] .settings-share-link .settings-share-revoke{color:#ef99b0}
+html[data-color-scheme=dark] .settings-share-link .settings-share-revoke:hover{background:#443043}
+@media(max-width:600px){.settings-dialog-header{padding:24px 22px 0}.settings-dialog-scroll{padding:0 16px 22px 22px}.settings-dialog-header .settings-tabs{margin-top:16px}.settings-share-link{padding:10px}}
