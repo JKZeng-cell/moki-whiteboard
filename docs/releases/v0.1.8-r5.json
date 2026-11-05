@@ -1,0 +1,105 @@
+{
+  "repository": "JKZeng-cell/moki-whiteboard",
+  "tag": "v0.1.8-r5",
+  "version": "0.1.8",
+  "sourceCommit": "58e704915ac2525212a80706f582c3bbe1c5a2e7",
+  "publicationCommit": "58e704915ac2525212a80706f582c3bbe1c5a2e7",
+  "nativeBuildRun": 41965344367,
+  "nativeJobs": {
+    "windows": 127040960678,
+    "macos": 127040960951
+  },
+  "publicationRun": 41965344367,
+  "releaseId": 434773335,
+  "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r5",
+  "nativeChecks": {
+    "windows": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "multipleBoardWindows": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 102
+    },
+    "macos": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "multipleBoardWindows": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 102
+    }
+  },
+  "signing": {
+    "windows": "unsigned",
+    "macOS": "ad-hoc",
+    "developerIDSigned": false,
+    "notarized": false
+  },
+  "publicDownloadsVerified": true,
+  "previousAssetsUnchanged": true,
+  "files": [
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.dmg",
+      "bytes": 253361893,
+      "sha256": "10b0403328e453a49777707c97379207eef0df4a41387bc9a8745a7ad437ddef",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.zip",
+      "bytes": 258688324,
+      "sha256": "5dc73ace0c5e08d158f0dd12b534b3b1dd56c9a7f4401942ed6fa51677178121",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-macOS-arm64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-Windows-x64.zip",
+      "bytes": 279999409,
+      "sha256": "3b0bdc04d46530fdbd9dd0ae59c1b483c02377e312e334859f1bacb543fd5ffc",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-Windows-x64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe",
+      "bytes": 213780299,
+      "sha256": "1f2f8d368987522019a9e5d7fe1a66319f341bbeeb2af051c34acc441d43e237",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-Setup-0.1.8-x64.exe"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap",
+      "bytes": 222863,
+      "sha256": "43caf97796f078fecc58d5a4254a59d11541dad824bc9da7e87b137453f7413c",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-macOS-arm64.txt",
+      "bytes": 208,
+      "sha256": "13e1d30c67be7f666a5bd26de868c32e8b5d0bb0cd41700e079425924db76921",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/SHA256SUMS-0.1.8-macOS-arm64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-Windows-x64.txt",
+      "bytes": 317,
+      "sha256": "7055b316a530e3af4b16e42a82175267551fc19dc7857894a48f2f495e85fa49",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/SHA256SUMS-0.1.8-Windows-x64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8.txt",
+      "bytes": 525,
+      "sha256": "df8c254c86f7626bd96a3bbb280db217d992d08e4bf68367b40ca4aca92c1f44",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/SHA256SUMS-0.1.8.txt"
+    },
+    {
+      "name": "verification-v0.1.8-r5.json",
+      "bytes": 2068,
+      "sha256": "87fe80d08a5bd5432665ac13d7b2efd95953f879c9ffed3c15d48fef97bd6814",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/verification-v0.1.8-r5.json"
+    }
+  ]
+}
