@@ -9,6 +9,18 @@ import {McpTransportSwitch} from '../src/web/mcp-transport-switch.js';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const item:BoardSummary={id:'test-board',title:'测试白板',version:1,updatedAt:new Date().toISOString(),pageCount:1,shapeCount:0,thumbnail:{version:1,capturedAt:new Date().toISOString()}};
 describe('白板管理表单',()=>{
+ it('更多菜单支持键盘导航、共享和关闭，操作不打开白板',()=>{
+  const open=vi.fn(),share=vi.fn();render(<BoardManager items={[item]} open={open} refresh={async()=>{}} controls={null} onShare={share}/>);
+  expect(screen.queryByRole('menu')).toBeNull();const trigger=screen.getByRole('button',{name:'更多操作 测试白板'});fireEvent.click(trigger);
+  expect(document.activeElement).toBe(screen.getByRole('menuitem',{name:'导出 测试白板'}));fireEvent.keyDown(document.activeElement!,{key:'End'});
+  expect(document.activeElement).toBe(screen.getByRole('menuitem',{name:'删除 测试白板'}));fireEvent.keyDown(document.activeElement!,{key:'Escape'});expect(screen.queryByRole('menu')).toBeNull();expect(document.activeElement).toBe(trigger);
+  fireEvent.click(trigger);fireEvent.click(screen.getByRole('menuitem',{name:'共享 测试白板'}));expect(share).toHaveBeenCalledWith(item);expect(open).not.toHaveBeenCalled();expect(screen.queryByRole('menu')).toBeNull();
+ });
+ it('编辑页按共享能力显示共享按钮',()=>{
+  const share=vi.fn();const {rerender}=render(<NativeControlsContext.Provider value={{back:vi.fn(),settings:vi.fn()}}><WorkbenchPageHeader title="测试白板"/></NativeControlsContext.Provider>);
+  expect(screen.queryByRole('button',{name:'共享白板'})).toBeNull();rerender(<NativeControlsContext.Provider value={{back:vi.fn(),settings:vi.fn(),share}}><WorkbenchPageHeader title="测试白板"/></NativeControlsContext.Provider>);
+  fireEvent.click(screen.getByRole('button',{name:'共享白板'}));expect(share).toHaveBeenCalledOnce();
+ });
  it('卡片与空结果位于独立滚动区域，署名页脚位于容器外',()=>{
   render(<BoardManager items={[item]} open={vi.fn()} refresh={async()=>{}} controls={null}/>);
   const cards=screen.getByRole('region',{name:'白板卡片列表'}),footer=screen.getByRole('contentinfo');
@@ -30,7 +42,7 @@ describe('白板管理表单',()=>{
  it('确认删除不发送空 JSON 请求体，完成后刷新列表',async()=>{
   const fetch=vi.fn(async()=>({ok:true,status:204}));vi.stubGlobal('fetch',fetch);const refresh=vi.fn(async()=>{});
   render(<BoardManager items={[item]} open={vi.fn()} refresh={refresh} controls={null}/>);
-  fireEvent.click(screen.getByRole('button',{name:'删除 测试白板'}));expect(fetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'更多操作 测试白板'}));fireEvent.click(screen.getByRole('menuitem',{name:'删除 测试白板'}));expect(fetch).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:'确认删除'}));
   await waitFor(()=>expect(refresh).toHaveBeenCalledOnce());
   expect(fetch).toHaveBeenCalledWith('/api/boards/test-board?expectedVersion=1',{method:'DELETE',headers:{}});expect(screen.queryByRole('dialog')).toBeNull();
@@ -38,7 +50,7 @@ describe('白板管理表单',()=>{
  it('支持从白板卡片导出整个白板文件',()=>{
   const click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
   render(<BoardManager items={[item]} open={vi.fn()} refresh={async()=>{}} controls={null}/>);
-  fireEvent.click(screen.getByRole('button',{name:'导出 测试白板'}));
+  fireEvent.click(screen.getByRole('button',{name:'更多操作 测试白板'}));fireEvent.click(screen.getByRole('menuitem',{name:'导出 测试白板'}));
   expect(click).toHaveBeenCalledOnce();
   click.mockRestore();
  });
@@ -52,7 +64,7 @@ describe('白板管理表单',()=>{
  it('版本冲突保留输入并要求用户重新确认',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:409,json:async()=>({currentVersion:2})})));
   render(<BoardManager items={[item]} open={vi.fn()} refresh={async()=>{}} controls={null}/>);
-  fireEvent.click(screen.getByRole('button',{name:'重命名 测试白板'}));fireEvent.change(screen.getByRole('textbox',{name:'白板名称'}),{target:{value:'新名称'}});fireEvent.click(screen.getByRole('button',{name:'保存'}));
+  fireEvent.click(screen.getByRole('button',{name:'更多操作 测试白板'}));fireEvent.click(screen.getByRole('menuitem',{name:'重命名 测试白板'}));fireEvent.change(screen.getByRole('textbox',{name:'白板名称'}),{target:{value:'新名称'}});fireEvent.click(screen.getByRole('button',{name:'保存'}));
   await waitFor(()=>expect(screen.getByRole('alert').textContent).toContain('关闭弹窗后重新操作'));expect((screen.getByRole('textbox',{name:'白板名称'}) as HTMLInputElement).value).toBe('新名称');
  });
 });

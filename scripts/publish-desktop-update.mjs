@@ -12,6 +12,9 @@ assert.equal(repo,'JKZeng-cell/moki-whiteboard');
 const version=JSON.parse(await readFile('package.json','utf8')).version;
 const tag=process.env.RELEASE_TAG,publicationCommit=process.env.GITHUB_SHA;
 assert.match(tag??'',new RegExp(`^v${version.replaceAll('.','\\.')}-r[1-9][0-9]*$`));
+const notesPath=`docs/releases/${tag}-notes.md`;
+const releaseTitle=(await readFile(notesPath,'utf8')).split(/\r?\n/u)[0].replace(/^#\s*/u,'').trim();
+assert.ok(releaseTitle.includes(version),'Release title must identify the application version');
 assert.match(publicationCommit??'',/^[a-f0-9]{40}$/u);
 assert.equal((await exec('git',['rev-parse','HEAD'])).stdout.trim(),publicationCommit);
 const gh=async args=>(await exec('gh',args,{timeout:20*60_000,maxBuffer:8*1024*1024})).stdout;
@@ -55,7 +58,7 @@ for(const [suffix,entries] of [['',files],['-Windows-x64',files.filter(item=>ite
 }
 const verification={version,tag,sourceCommit,publicationCommit,workflowRun:buildRun,publicationRun:Number(process.env.GITHUB_RUN_ID),nativeChecks,signing:{windows:'unsigned',macOS:mac.signing,developerIDSigned:mac.developerIDSigned,notarized:mac.notarized},files:files.map(({path,...item})=>item)};
 const verificationName=`verification-${tag}.json`,verificationPath=join(root,verificationName);await writeFile(verificationPath,JSON.stringify(verification,null,2));upload.push({name:verificationName,path:verificationPath,bytes:(await stat(verificationPath)).size,sha256:await digest(verificationPath)});
-await gh(['release','create',tag,'--repo',repo,'--target',sourceCommit,'--draft','--title',`MOKI Whiteboard ${version} · 2026-11-04 update`,'--notes-file','docs/releases/v0.1.8-r2-notes.md']);
+await gh(['release','create',tag,'--repo',repo,'--target',sourceCommit,'--draft','--title',releaseTitle,'--notes-file',notesPath]);
 for(const file of upload)await gh(['release','upload',tag,file.path,'--repo',repo]);
 let published=(await api('releases?per_page=100')).find(item=>item.tag_name===tag);assert.ok(published);assert.equal(published.target_commitish,sourceCommit);assert.equal(published.assets.length,upload.length);
 for(const file of upload){const asset=published.assets.find(item=>item.name===file.name);assert.equal(asset?.state,'uploaded');assert.equal(asset.size,file.bytes);assert.equal(asset.digest,'sha256:'+file.sha256);}

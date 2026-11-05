@@ -1,5 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {useTheme} from './use-theme.js';
+import {useLanSharingState} from './lan-sharing-client.js';
+import {BoardShareDialog} from './board-share-dialog.js';
 import {useWhiteboardFiles} from './use-whiteboard-files.js';
 import {useFileDocument} from './use-file-document.js';
 import {BoardManager,type BoardSummary} from './board-manager.js';
@@ -17,6 +19,8 @@ declare global {interface Window {mokiBeforeQuit?:()=>Promise<void>;}}
 function route(){const m=location.pathname.match(/^\/board\/([^/]+)/);return m?.[1]?decodeURIComponent(m[1]):undefined;}
 async function api<T>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(path,{...init,headers:{'content-type':'application/json',...init?.headers}});if(r.status===204)return undefined as T;const b=await r.json();if(!r.ok)throw new Error(b.error??'请求失败');return b as T;}
 export function App(){
+ const sharing=useLanSharingState();
+ const [shareBoard,setShareBoard]=useState<{id:string;title:string}>(),[settingsBoard,setSettingsBoard]=useState<string>();
  const [id,setId]=useState(route),[items,setItems]=useState<BoardSummary[]>([]),[error,setError]=useState(''),[settings,setSettings]=useState(false);
  const [openRevision,setOpenRevision]=useState(0);
  const [connection,setConnection]=useState<McpConnectionInfo>();
@@ -41,10 +45,11 @@ export function App(){
  useEffect(()=>{if(!id)return;let last:number|undefined,pending=false,disposed=false;const timer=setInterval(()=>{if(pending||version.current===undefined||version.current===last)return;const observed=version.current;pending=true;void captureThumbnail(id).then(saved=>{if(saved&&!disposed)last=observed;}).catch(e=>{if(!disposed)setError(String(e));}).finally(()=>{pending=false;});},1300);return()=>{disposed=true;clearInterval(timer);};},[id,dark]);
  const back=async()=>{try{await fileDocument.save(false,true);}catch(e){setError('保存失败，尚未离开白板：'+String(e));return;}try{if(id)await captureThumbnail(id);}catch(e){setError('白板内容已保存，截图将在下次打开时重试：'+String(e));}navigate();};
  return <>
- {id?<NativeControlsContext.Provider value={{back:()=>void back(),settings:()=>{setSettingsTab('general');setSettings(true);}}}><WhiteboardPage key={`${id}:${openRevision}`} boardTitle={items.find(item=>item.id===id)?.title ?? '白板名称加载中…'} onSave={()=>fileDocument.save()} onSaveAs={fileDocument.saveAs} fileStatus={fileDocument.status} onCheckpointReady={value=>{checkpoint.current=value;}}/></NativeControlsContext.Provider>:
- <BoardManager items={items} open={next=>navigate(next)} refresh={refresh} controls={<>{whiteboardFiles.controls}<button className="native-app-control" aria-label="设置" title="设置" onClick={()=>{setSettingsTab('general');setSettings(true);}}><Settings size={18}/></button></>}/>}
+ {id?<NativeControlsContext.Provider value={{back:()=>void back(),settings:()=>{setSettingsBoard(undefined);setSettingsTab('general');setSettings(true);},...(sharing?.enabled?{share:()=>setShareBoard({id,title:items.find(item=>item.id===id)?.title??'当前白板'})}:{})}}><WhiteboardPage key={`${id}:${openRevision}`} boardTitle={items.find(item=>item.id===id)?.title ?? '白板名称加载中…'} onSave={()=>fileDocument.save()} onSaveAs={fileDocument.saveAs} fileStatus={fileDocument.status} onCheckpointReady={value=>{checkpoint.current=value;}}/></NativeControlsContext.Provider>:
+ <BoardManager items={items} open={next=>navigate(next)} refresh={refresh} onShare={item=>setShareBoard(item)} controls={<>{whiteboardFiles.controls}<button className="native-app-control" aria-label="设置" title="设置" onClick={()=>{setSettingsBoard(undefined);setSettingsTab('general');setSettings(true);}}><Settings size={18}/></button></>}/>}
  {whiteboardFiles.busy?<div className="whiteboard-file-progress" role="status">正在打开白板文件…</div>:null}
  {error||syncError?<div className="native-app-error" role="alert">{error||syncError}<button aria-label="关闭错误" onClick={()=>{setError('');setSyncError('');}}><X size={15}/></button></div>:null}
- {settings?<SettingsDialog currentBoardId={id} version={connection?.appVersion??''} tab={settingsTab} onTab={setSettingsTab} close={()=>setSettings(false)} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<McpConnectionPanel info={connection} agentTask={agentTask} http={http} onTransportChange={setHttp}/>}/>:null}
+ {settings?<SettingsDialog currentBoardId={id??settingsBoard} version={connection?.appVersion??''} tab={settingsTab} onTab={setSettingsTab} close={()=>setSettings(false)} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<McpConnectionPanel info={connection} agentTask={agentTask} http={http} onTransportChange={setHttp}/>}/>:null}
+ {shareBoard?<BoardShareDialog key={shareBoard.id} board={shareBoard} close={()=>setShareBoard(undefined)} openSettings={()=>{setSettingsBoard(shareBoard.id);setShareBoard(undefined);setSettingsTab('general');setSettings(true);}}/>:null}
  </>;
 }

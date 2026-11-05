@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, Settings, Share2 } from 'lucide-react';
 import { useNativeControls } from '../../../../web/native-context.js';
 
 type WorkbenchPageHeaderProps = {
@@ -47,6 +47,7 @@ export function WorkbenchPageHeader({
       {actions || controls ? (
         <div className={`workbench-page-header-actions flex min-w-0 items-center ${actionsClassName}`}>
           {actions}
+          {controls?.share ? <button className="native-app-control" title="共享白板" aria-label="共享白板" onClick={controls.share}><Share2 size={17}/></button> : null}
           {controls ? <button className="native-app-control" title="设置" aria-label="设置" onClick={controls.settings}><Settings size={17}/></button> : null}
         </div>
       ) : null}

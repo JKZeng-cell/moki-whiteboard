@@ -1,15 +1,15 @@
 import {useEffect,useRef,useState} from 'react';
 import {Copy,Link2,Unlink} from 'lucide-react';
 import type {LanSharingState} from '../shared/lan-sharing-contract.js';
+import {sharingAPI,copySharingText} from './lan-sharing-client.js';
 
-async function sharingAPI<T>(path:string,init?:RequestInit):Promise<T>{const response=await fetch(path,{...init,...(init?.body===undefined?{}:{headers:{'content-type':'application/json'}})});const value=await response.json();if(!response.ok)throw new Error(value.error??'局域网共享操作失败');return value as T;}
 export function LanSharingPanel({currentBoardId}:{currentBoardId?:string|undefined}){
  const [state,setState]=useState<LanSharingState>(),[boards,setBoards]=useState<Array<{id:string;title:string}>>([]),[selected,setSelected]=useState(currentBoardId??''),[address,setAddress]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[copied,setCopied]=useState('');
  const timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
- useEffect(()=>{let live=true;void Promise.all([sharingAPI<LanSharingState>('/api/sharing'),sharingAPI<{items:Array<{id:string;title:string}>}>('/api/boards')]).then(([value,list])=>{if(!live)return;if(typeof value.enabled!=='boolean')throw new Error('无法读取局域网共享设置');setState(value);setBoards(list.items);setSelected(current=>list.items.some(board=>board.id===current)?current:list.items[0]?.id??'');setAddress(value.addresses[0]?.address??'');}).catch(error=>{if(live)setError(String(error));});return()=>{live=false;clearTimeout(timer.current);};},[]);
- const update=async(path:string,method:string,body?:unknown)=>{if(busy)return;setBusy(true);setError('');setCopied('');try{setState(await sharingAPI<LanSharingState>(path,{method,...(body===undefined?{}:{body:JSON.stringify(body)})}));}catch(error){setError(error instanceof Error?error.message:String(error));}finally{setBusy(false);}};
- const copy=async(id:string,url:string)=>{setError('');try{if(window.mokiDesktop?.copyText){if(!await window.mokiDesktop.copyText(url))throw new Error('复制失败');}else await navigator.clipboard.writeText(url);setCopied(id);clearTimeout(timer.current);timer.current=setTimeout(()=>setCopied(''),1800);}catch{setError('无法复制链接，请选中链接手动复制。');}};
+ useEffect(()=>{let live=true;void Promise.all([sharingAPI('/api/sharing'),fetch('/api/boards').then(async response=>{if(!response.ok)throw new Error('无法读取白板列表');return response.json() as Promise<{items:Array<{id:string;title:string}>}>;})]).then(([value,list])=>{if(!live)return;setState(value);setBoards(list.items);setSelected(current=>list.items.some(board=>board.id===current)?current:list.items[0]?.id??'');setAddress(value.addresses[0]?.address??'');}).catch(error=>{if(live)setError(String(error));});return()=>{live=false;clearTimeout(timer.current);};},[]);
+ const update=async(path:string,method:string,body?:unknown)=>{if(busy)return;setBusy(true);setError('');setCopied('');try{setState(await sharingAPI(path,{method,...(body===undefined?{}:{body:JSON.stringify(body)})}));}catch(error){setError(error instanceof Error?error.message:String(error));}finally{setBusy(false);}};
+ const copy=async(id:string,url:string)=>{setError('');try{await copySharingText(url);setCopied(id);clearTimeout(timer.current);timer.current=setTimeout(()=>setCopied(''),1800);}catch{setError('无法复制链接，请选中链接手动复制。');}};
  return <section className="settings-lan-sharing"><h3>局域网共享</h3><label className="settings-toggle-row"><span><strong>开启局域网只读共享</strong><small>同一网络的设备可通过链接查看指定白板。需要保持本机白板应用运行。</small></span><input type="checkbox" role="switch" aria-label="局域网共享" disabled={busy||!state} checked={state?.enabled??false} onChange={event=>void update('/api/sharing','PUT',{enabled:event.target.checked})}/></label>
  {state?.enabled?<>
   {!state.addresses.length?<p role="status">未检测到局域网 IPv4 地址，请先连接 Wi-Fi 或有线网络后重新打开设置。</p>:<>

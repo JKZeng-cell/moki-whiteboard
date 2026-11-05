@@ -9,7 +9,7 @@ on:
       tag:
         description: New release revision tag
         required: true
-        default: v0.1.8-r2
+        default: v0.1.8-r3
 
 permissions:
   actions: read

@@ -3,13 +3,13 @@ import {networkInterfaces} from 'node:os';
 import {isIP} from 'node:net';
 import {createReadStream,existsSync} from 'node:fs';
 import {lstat,readFile} from 'node:fs/promises';
-import {join,resolve} from 'node:path';
-import Fastify,{type FastifyInstance,type FastifyRequest} from 'fastify';
+import {join,resolve,extname} from 'node:path';
+import Fastify,{type FastifyInstance,type FastifyRequest,type FastifyReply} from 'fastify';
 import fastifyStatic from '@fastify/static';
 import {z} from 'zod';
 import type {WhiteboardStore} from './store.js';
 import type {BoardDocument} from '../core/types.js';
-import type {LanSharingState} from '../shared/lan-sharing-contract.js';
+import type {LanSharingState,SharedAttachment} from '../shared/lan-sharing-contract.js';
 import {ResourceCache} from './resource-cache.js';
 
 export function isPrivateAddress(raw:string){
@@ -28,6 +28,15 @@ export function lanAddresses(){
 type LinkRow={token:string;board_id:string;created_at:string};
 const denied=()=>Object.assign(new Error('分享链接不存在或已停止共享'),{statusCode:404});
 const sourceAssetId=(value:unknown)=>{try{return /^\/api\/whiteboard\/assets\/([^/]+)$/u.exec(new URL(String(value),'http://local').pathname)?.[1];}catch{return;}};
+const attachmentMime=(path:string)=>({'.pdf':'application/pdf','.txt':'text/plain','.md':'text/plain','.csv':'text/plain','.json':'text/plain','.log':'text/plain','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp','.svg':'image/svg+xml','.avif':'image/avif','.mp4':'video/mp4','.m4v':'video/mp4','.webm':'video/webm','.mov':'video/quicktime','.mp3':'audio/mpeg','.m4a':'audio/mp4','.wav':'audio/wav','.ogg':'audio/ogg'}[extname(path).toLowerCase()]??'application/octet-stream');
+function byteRange(value:string,size:number){const match=/^bytes=(\d*)-(\d*)$/u.exec(value);if(!match||!size||(!match[1]&&!match[2]))return;const start=match[1]?Number(match[1]):Math.max(0,size-Number(match[2])),end=match[1]&&match[2]?Math.min(Number(match[2]),size-1):size-1;if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>end||start>=size)return;return {start,end};}
+async function serveAttachment(request:FastifyRequest,reply:FastifyReply,path:string,name:string){
+ const info=await lstat(path);if(!info.isFile()||info.isSymbolicLink())throw denied();
+ const mime=attachmentMime(path),preview=(request.query as {preview?:string}).preview==='1'&&mime!=='application/octet-stream';
+ reply.type(mime).header('content-security-policy',"sandbox; default-src 'none'; style-src 'unsafe-inline'").header('accept-ranges','bytes').header('content-disposition',`${preview?'inline':'attachment'}; filename*=UTF-8''${encodeURIComponent(name)}`);
+ if(request.headers.range){const range=byteRange(request.headers.range,info.size);if(!range)return reply.code(416).header('content-range',`bytes */${info.size}`).send();return reply.code(206).header('content-range',`bytes ${range.start}-${range.end}/${info.size}`).header('content-length',range.end-range.start+1).send(createReadStream(path,range));}
+ return reply.header('content-length',info.size).send(createReadStream(path));
+}
 
 /** A separate listener exposes only token-scoped reads, never the owner API or MCP. */
 export class LanSharing {
@@ -68,7 +77,7 @@ export class LanSharing {
   const shared=Fastify({logger:false,bodyLimit:1024,forceCloseConnections:true,requestTimeout:15000});
   shared.setErrorHandler((error,_request,reply)=>reply.code(error instanceof Error&&'statusCode' in error?Number(error.statusCode):404).send({error:'分享链接不可用或内容暂时无法读取'}));
   shared.addHook('onRequest',async(request,reply)=>{
-   reply.header('referrer-policy','no-referrer').header('cache-control','no-store').header('x-content-type-options','nosniff').header('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; media-src 'self' blob: data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+   reply.header('referrer-policy','no-referrer').header('cache-control','no-store').header('x-content-type-options','nosniff').header('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; media-src 'self' blob: data: http: https:; connect-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
    if(!isPrivateAddress(request.ip)||!isPrivateAddress(hostname(request.headers.host??''))&&hostname(request.headers.host??'')!=='localhost')return reply.code(403).send({error:'仅支持局域网访问'});
    if(request.method!=='GET'&&request.method!=='HEAD')return reply.code(405).send({error:'此链接仅供查看'});
    if(request.headers.origin&&request.headers.origin!==`http://${request.headers.host}`)return reply.code(403).send({error:'无效来源'});
@@ -80,7 +89,7 @@ export class LanSharing {
   shared.get('/favicon.ico',async(_request,reply)=>reply.type('image/x-icon').send(await readFile(join(this.webRoot,'favicon.ico'))));
   shared.get('/moki-whiteboard-icon.png',async(_request,reply)=>reply.type('image/png').send(await readFile(join(this.webRoot,'moki-whiteboard-icon.png'))));
   shared.get('/share-api/:token/board',async request=>{
-   const token=(request.params as {token:string}).token,board=this.board(token),snapshot=structuredClone(board.snapshot),attachments:Array<{id:string;name:string;url:string;mimeType:string}>=[];
+   const token=(request.params as {token:string}).token,board=this.board(token),snapshot=structuredClone(board.snapshot),attachments:SharedAttachment[]=[];
    for(const record of Object.values(snapshot.document.store)){
     const props=('props' in record?record.props:undefined) as Record<string,unknown>|undefined;
     if(!props)continue;
@@ -88,12 +97,17 @@ export class LanSharing {
      const id=sourceAssetId(props.src);
      if(id)props.src=`/share-api/${token}/asset/${encodeURIComponent(id)}`;
      else if(typeof props.src==='string'&&!/^(?:data:|https?:\/\/)/iu.test(props.src))props.src='';
-     if(id&&record.type==='media')attachments.push({id:record.id,name:String(props.name??'媒体'),url:String(props.src),mimeType:String(props.mimeType??'application/octet-stream')});
     }
-    if(record.typeName==='shape'&&['resource','image','media'].includes(String(record.type))){
-     const target=this.fileTarget(board,record.id);
-     if(target){const url=`/share-api/${token}/file/${encodeURIComponent(record.id)}`;attachments.push({id:record.id,name:String(props.name??props.altText??'附件'),url,mimeType:'application/octet-stream'});}
-    }
+   }
+   for(const record of Object.values(snapshot.document.store)){
+    if(record.typeName!=='shape'||!['image','media','resource','link'].includes(String(record.type)))continue;
+    const props=record.props as Record<string,unknown>,asset=snapshot.document.store[String(props.assetId??'')],assetProps=(asset&&'props' in asset?asset.props:{}) as Record<string,unknown>;
+    const target=record.type==='resource'||!assetProps.src?this.fileTarget(board,record.id):undefined,fileUrl=`/share-api/${token}/file/${encodeURIComponent(record.id)}`;
+    let url=String(assetProps.src??''),mimeType=String(assetProps.mimeType??'application/octet-stream'),kind=String(record.type) as SharedAttachment['kind'];
+    if(target){url=fileUrl;mimeType=attachmentMime(target);kind=mimeType.startsWith('image/')?'image':/^(audio|video)\//u.test(mimeType)?'media':'resource';}
+    if(record.type==='link'){try{const link=new URL(String(props.url??''));url=['http:','https:'].includes(link.protocol)?link.href:'';}catch{url='';}}
+    const previewUrl=target?(mimeType!=='application/octet-stream'?fileUrl+'?preview=1':undefined):kind==='link'?undefined:url||undefined;
+    attachments.push({id:record.id,pageId:String(record.parentId??''),name:String(props.name??props.altText??props.title??assetProps.name??'附件'),url,mimeType,kind,...(previewUrl?{previewUrl}:{}),...(kind==='media'?{mediaKind:mimeType.startsWith('audio/')||props.mediaKind==='audio'?'audio' as const:'video' as const}:{})});
    }
    // Do not disclose local filesystem paths, library identifiers or private session data.
    const scrub=(value:unknown):unknown=>Array.isArray(value)?value.map(scrub):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([key])=>!['localPath','target','libraryItemId','sourcePath'].includes(key)).map(([key,item])=>[key,scrub(item)])):value;
@@ -105,14 +119,13 @@ export class LanSharing {
    if(!Object.values(board.snapshot.document.store).some(record=>record.typeName==='asset'&&sourceAssetId((('props' in record?record.props:undefined) as Record<string,unknown>|undefined)?.src)===id))throw denied();
    const row=this.store.db.prepare('SELECT content,mime_type,byte_size FROM whiteboard_assets WHERE id=?').get(id);if(!row)throw denied();
    const bytes=new ResourceCache(this.store).readAsset(id,row.content as Uint8Array,Number(row.byte_size));reply.type(String(row.mime_type)).header('content-security-policy',"sandbox; default-src 'none'").header('accept-ranges','bytes');
-   if(request.headers.range){const match=/^bytes=(\d+)-(\d*)$/u.exec(request.headers.range);const start=Number(match?.[1]),end=match?.[2]?Math.min(Number(match[2]),bytes.length-1):bytes.length-1;if(!match||!Number.isSafeInteger(start)||start<0||start>end)return reply.code(416).send();return reply.code(206).header('content-range',`bytes ${start}-${end}/${bytes.length}`).send(bytes.subarray(start,end+1));}
+   if(request.headers.range){const range=byteRange(request.headers.range,bytes.length);if(!range)return reply.code(416).header('content-range',`bytes */${bytes.length}`).send();return reply.code(206).header('content-range',`bytes ${range.start}-${range.end}/${bytes.length}`).send(bytes.subarray(range.start,range.end+1));}
    return reply.send(bytes);
   });
   shared.get('/share-api/:token/file/:id',async(request,reply)=>{
    const {token,id}=request.params as {token:string;id:string};const board=this.board(token),path=this.fileTarget(board,id);if(!path)throw denied();
-   const info=await lstat(path);if(!info.isFile()||info.isSymbolicLink())throw denied();
    const record=board.snapshot.document.store[id];const props=(record&&'props' in record?record.props:undefined) as Record<string,unknown>|undefined;
-   return reply.type('application/octet-stream').header('content-security-policy',"sandbox; default-src 'none'").header('content-disposition',`attachment; filename*=UTF-8''${encodeURIComponent(String(props?.name??'白板附件'))}`).send(createReadStream(path));
+   return serveAttachment(request,reply,path,String(props?.name??'白板附件'));
   });
   let port=this.options.port??Number(this.store.db.prepare('SELECT port FROM lan_sharing_settings WHERE id=1').get()?.port??process.env.MOKI_WHITEBOARD_SHARE_PORT??4323);
   try{await shared.listen({host:'0.0.0.0',port});}catch(error){if((error as NodeJS.ErrnoException).code!=='EADDRINUSE'){await shared.close();throw error;}port=0;await shared.listen({host:'0.0.0.0',port});}

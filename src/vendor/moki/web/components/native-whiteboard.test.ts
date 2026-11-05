@@ -148,6 +148,27 @@ function mockCanvas() {
   return methods;
 }
 
+describe('read-only shared whiteboard controls',()=>{
+ it('keeps grouped page search and switching while hiding mutations and ignoring paste',()=>{
+  mockCanvas();const store=new NativeWhiteboardStore(),seed=new NativeWhiteboardEditor(store),first=seed.getCurrentPageId();
+  seed.renamePage(first,'素材页');seed.createPageGroup(first,'参考素材');const second=seed.createPage();seed.renamePage(second,'展示页');seed.setCurrentPage(first);
+  const before=structuredClone(store.snapshot.document);render(createElement(NativeWhiteboard,{store,readOnly:true}));
+  fireEvent.click(screen.getByRole('button',{name:'打开白板页面菜单'}));expect(screen.getByRole('searchbox',{name:'搜索白板页面'})).toHaveAttribute('placeholder','搜索页面或分组');
+  expect(screen.queryByRole('button',{name:'新建页面分组'})).toBeNull();expect(screen.queryByRole('button',{name:'新建白板页面'})).toBeNull();expect(screen.queryByRole('textbox',{name:/重命名/})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'收起页面分组 参考素材'}));expect(screen.queryByRole('button',{name:'切换到页面 素材页'})).toBeNull();
+  fireEvent.change(screen.getByRole('searchbox',{name:'搜索白板页面'}),{target:{value:'素材'}});expect(screen.getByRole('button',{name:'切换到页面 素材页'})).toBeDefined();
+  fireEvent.change(screen.getByRole('searchbox',{name:'搜索白板页面'}),{target:{value:''}});fireEvent.click(screen.getByRole('button',{name:'切换到页面 展示页'}));expect(seed.getCurrentPageId()).toBe(second);
+  fireEvent.paste(window,{clipboardData:{types:['text/plain'],getData:()=> 'https://example.com'}});expect(store.snapshot.document).toEqual(before);expect(screen.getByRole('button',{name:'重置画布'})).toBeDefined();
+ });
+ it('exposes playable video controls without selecting or mutating its shape',()=>{
+  mockCanvas();const store=new NativeWhiteboardStore(),seed=new NativeWhiteboardEditor(store);
+  seed.createShapes([{id:'shape:clip',type:'media',x:10,y:10,props:{assetId:'asset:clip',name:'演示.mp4',mediaKind:'video',w:640,h:360}}]);
+  store.mutate(snapshot=>{snapshot.document.store['asset:clip']={id:'asset:clip',typeName:'asset',type:'media',props:{src:'/share-api/token/asset/clip',mimeType:'video/mp4'}};});
+  const before=structuredClone(store.snapshot.document);const {container}=render(createElement(NativeWhiteboard,{store,readOnly:true}));const video=container.querySelector('video')!;
+  expect(video.controls).toBe(true);expect(video.parentElement).toHaveClass('pointer-events-auto','rounded-none');expect(store.snapshot.document).toEqual(before);
+ });
+});
+
 describe("native whiteboard geometry", () => {
   it("uses the visible cubic curve for pen path bounds", () => {
     const shape = {

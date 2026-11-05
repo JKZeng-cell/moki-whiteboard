@@ -32,13 +32,24 @@ describe('LAN read-only sharing',()=>{
   const {store,app,board,other,root,base,token}=await setup();
   const upload=async(id:string,text:string)=>{const response=await app.inject({method:'POST',url:'/api/whiteboard/assets?boardId='+id,headers:{'content-type':'application/x-moki-whiteboard-asset','x-moki-asset-mime':'video/mp4','x-moki-asset-name':'video.mp4'},payload:Buffer.from(text)});return response.json();};
   const own=await upload(board.id,'0123456789'),privateAsset=await upload(other.id,'private video');const file=join(root,'notes.txt');await writeFile(file,'shared file');
-  store.mutate(board.id,'test','fixture',{},snapshot=>{const parentId=pages(snapshot)[0]!.id;snapshot.document.store['asset:own']={id:'asset:own',typeName:'asset',type:'media',props:{src:own.src,mimeType:'video/mp4',localPath:file}};snapshot.document.store['shape:file']={id:'shape:file',typeName:'shape',type:'resource',parentId,props:{localPath:file,name:'notes.txt',kind:'file'}};});
+  store.mutate(board.id,'test','fixture',{},snapshot=>{const parentId=pages(snapshot)[0]!.id;snapshot.document.store['asset:own']={id:'asset:own',typeName:'asset',type:'media',props:{src:own.src,mimeType:'video/mp4',localPath:file}};snapshot.document.store['shape:video']={id:'shape:video',typeName:'shape',type:'media',parentId,props:{assetId:'asset:own',localPath:join(root,'stale.mp4'),name:'portable.mp4',mediaKind:'video'}};snapshot.document.store['shape:file']={id:'shape:file',typeName:'shape',type:'resource',parentId,props:{localPath:file,name:'notes.txt',kind:'file'}};});
   const response=await fetch(base+'/share-api/'+token+'/board'),text=await response.text(),value=JSON.parse(text);
   expect(text).not.toContain(root);expect(text).not.toContain('localPath');expect(value.snapshot.document.store['asset:own'].props.src).toContain('/share-api/'+token+'/asset/');
+  expect(value.attachments).toEqual(expect.arrayContaining([expect.objectContaining({id:'shape:video',name:'portable.mp4',pageId:pages(board.snapshot)[0]!.id,kind:'media',mediaKind:'video',mimeType:'video/mp4',previewUrl:value.snapshot.document.store['asset:own'].props.src}),expect.objectContaining({id:'shape:file',kind:'resource',mimeType:'text/plain',previewUrl:'/share-api/'+token+'/file/shape%3Afile?preview=1'})]));
   const asset=await fetch(base+value.snapshot.document.store['asset:own'].props.src,{headers:{range:'bytes=2-5'}});expect(asset.status).toBe(206);expect(await asset.text()).toBe('2345');
   expect((await fetch(base+'/share-api/'+token+'/asset/'+privateAsset.src.split('/').at(-1))).status).toBe(404);
   const download=await fetch(base+'/share-api/'+token+'/file/shape%3Afile');expect(await download.text()).toBe('shared file');expect(download.headers.get('content-disposition')).toContain('attachment');
+  const preview=await fetch(base+'/share-api/'+token+'/file/shape%3Afile?preview=1');expect(preview.headers.get('content-type')).toContain('text/plain');expect(preview.headers.get('content-disposition')).toContain('inline');expect(await preview.text()).toBe('shared file');
+  const suffix=await fetch(base+value.attachments[0].previewUrl,{headers:{range:'bytes=-3'}});expect(suffix.status).toBe(206);expect(await suffix.text()).toBe('789');
+  const invalid=await fetch(base+value.attachments[0].previewUrl,{headers:{range:'bytes=999-'}});expect(invalid.status).toBe(416);expect(invalid.headers.get('content-range')).toBe('bytes */10');
   expect((await fetch(base+'/share-api/'+token+'/file/unknown?path='+encodeURIComponent(file))).status).toBe(404);
+ });
+ it('streams referenced local videos with MIME, ranges and HEAD without exposing unrelated files',async()=>{
+  const {root,store,board,base,token}=await setup();const path=join(root,'clip.mp4');await writeFile(path,'0123456789');
+  store.mutate(board.id,'test','fixture',{},snapshot=>{snapshot.document.store['shape:local-video']={id:'shape:local-video',typeName:'shape',type:'resource',parentId:pages(snapshot)[0]!.id,props:{name:'clip.mp4',kind:'file',localPath:path}};});
+  const value=await (await fetch(base+'/share-api/'+token+'/board')).json();expect(value.attachments[0]).toMatchObject({kind:'media',mediaKind:'video',mimeType:'video/mp4'});
+  const head=await fetch(base+value.attachments[0].previewUrl,{method:'HEAD'});expect(head.headers.get('content-length')).toBe('10');expect(await head.text()).toBe('');
+  const response=await fetch(base+value.attachments[0].previewUrl,{headers:{range:'bytes=5-'}});expect(response.status).toBe(206);expect(response.headers.get('content-type')).toContain('video/mp4');expect(response.headers.get('content-range')).toBe('bytes 5-9/10');expect(await response.text()).toBe('56789');
  });
  it('updates shared content live without enabling remote writes',async()=>{
   const {base,token,store,board}=await setup();const before=await (await fetch(base+'/share-api/'+token+'/board')).json();

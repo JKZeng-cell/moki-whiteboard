@@ -4024,6 +4024,7 @@ export function NativeWhiteboard({
   store,
   viewStateKey,
   readOnly=false,
+  onReadonlyShapeOpen,
   onMount,
   maxAssetSize: _maxAssetSize,
   color = "black",
@@ -4050,6 +4051,7 @@ export function NativeWhiteboard({
   store: NativeWhiteboardStore;
   viewStateKey?:string;
   readOnly?:boolean;
+  onReadonlyShapeOpen?:(shapeId:string)=>void;
   onMount?: (editor: NativeWhiteboardEditor) => void;
   maxAssetSize?: number;
   color?: NativeCanvasColor;
@@ -4414,6 +4416,7 @@ export function NativeWhiteboard({
 
   useEffect(() => {
     const isEditingText = (event: Event) => {
+      if(readOnly)return true;
       const target = event.target instanceof HTMLElement ? event.target : null;
       const embedded = rootRef.current?.closest('[data-whiteboard-embedded="true"]');
       if (embedded && (embedded.getAttribute('data-whiteboard-active') !== 'true' || !target || !embedded.contains(target))) return true;
@@ -4561,7 +4564,7 @@ export function NativeWhiteboard({
         clipboardNoticeTimerRef.current = undefined;
       }
     };
-  }, [editor, onImageFiles, onImageUrl, store]);
+  }, [editor, onImageFiles, onImageUrl, readOnly, store]);
 
   useEffect(() => {
     if (!pageMenuOpen) return;
@@ -6297,6 +6300,7 @@ export function NativeWhiteboard({
     const name = pageName(store.snapshot, page.id);
     const editedAt = formatPageEditedAt(page);
     const isCurrent = page.id === currentPageId;
+    if(readOnly)return <li key={page.id} className={`relative flex min-h-10 items-center gap-1 rounded-[16px] border px-2.5 transition ${isCurrent?'border-[#cbc7ef] bg-[#f0efff]':'border-[#e8e9f0] bg-white'}`}><button type="button" aria-label={`切换到页面 ${name}`} onClick={()=>{editor.setCurrentPage(page.id);setPageMenuOpen(false);setPageQuery('');}} className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"><span className="block truncate text-xs font-bold text-[#30364d]">{name}</span><span className="mt-0.5 block truncate text-[0.625rem] font-semibold text-[#989dae]">{editedAt}</span></button></li>;
     const isRenaming = page.id === renamingPageId;
     const isDropTarget = pageDropTarget?.type === "page" &&
       pageDropTarget.id === page.id && draggedPageId !== page.id;
@@ -6633,7 +6637,7 @@ export function NativeWhiteboard({
     .map((id) => editor.getShape(id))
     .filter((shape): shape is NativeWhiteboardShape => Boolean(shape));
   const expandedGroupSelected = Boolean(selectedExpandedGroupId(selectedControlShapes));
-  const interactiveLinkShapes = !expandedGroupSelected && selectedLinkShapes.length === 1
+  const interactiveLinkShapes = !readOnly && !expandedGroupSelected && selectedLinkShapes.length === 1
     ? selectedLinkShapes
     : [];
   const animatedImageShapes = shapes(store.snapshot).flatMap((shape) => {
@@ -6844,7 +6848,7 @@ export function NativeWhiteboard({
       })()
     : undefined;
   return (
-    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
+    <div ref={rootRef} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape)onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
         ref={canvasRef}
         className="native-whiteboard-canvas block h-full w-full touch-none"
@@ -7227,7 +7231,7 @@ export function NativeWhiteboard({
         const common = {
           src,
           preload: "metadata" as const,
-          controls: selected,
+          controls: readOnly || selected,
           className: "size-full",
           onDoubleClick: (event: React.MouseEvent<HTMLMediaElement>) => {
             if (!localPath) return;
@@ -7240,7 +7244,7 @@ export function NativeWhiteboard({
           <div
             key={`media-${shape.id}`}
             aria-label={`${video ? "视频" : "音频"}预览 ${String(shape.props.name ?? "")}`}
-            className={`absolute z-[2] overflow-hidden ${video ? "rounded-none" : "rounded-2xl"} ${selected && selectedShapeIds.size === 1 ? "pointer-events-auto ring-2 ring-[#625bc5]" : "pointer-events-none"}`}
+            className={`absolute z-[2] overflow-hidden ${video ? "rounded-none" : "rounded-2xl"} ${readOnly?'pointer-events-auto':selected && selectedShapeIds.size === 1 ? "pointer-events-auto ring-2 ring-[#625bc5]" : "pointer-events-none"}`}
             onContextMenu={event => {
               if (!selected) return;
               event.preventDefault();
@@ -7610,7 +7614,7 @@ export function NativeWhiteboard({
           </div>
         </div>
       )}
-      <div ref={pageMenuRef} style={readOnly?{display:'none'}:undefined} data-whiteboard-page-toolbar data-whiteboard-control-surface className="absolute left-3 top-3 z-40 flex items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-sm backdrop-blur">
+      <div ref={pageMenuRef} data-whiteboard-page-toolbar data-whiteboard-control-surface className="absolute left-3 top-3 z-40 flex items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-sm backdrop-blur">
         <button
           type="button"
           aria-label="打开白板页面菜单"
@@ -7625,7 +7629,7 @@ export function NativeWhiteboard({
           <span className="truncate">{currentPageName}</span>
           <ChevronDown className={`size-3.5 shrink-0 transition ${pageMenuOpen ? "rotate-180" : ""}`} />
         </button>
-        <button
+        {!readOnly&&<><button
           type="button"
           aria-label="新建白板页面"
           title="新建页面"
@@ -7660,6 +7664,7 @@ export function NativeWhiteboard({
         >
           <Redo2 className="size-4" />
         </button>
+        </>}
         {pageMenuOpen && (
           <div
             role="dialog"
@@ -7686,7 +7691,7 @@ export function NativeWhiteboard({
             </label>
             <div className="mt-2 flex items-center justify-between px-1">
               <span className="text-[.625rem] font-bold text-[#9ba0b1]">页面与分组</span>
-              <button
+              {!readOnly&&<button
                 type="button"
                 aria-label="新建页面分组"
                 title="以当前页创建分组"
@@ -7697,9 +7702,14 @@ export function NativeWhiteboard({
                 className="grid size-7 place-items-center rounded-lg text-[#625bc5] transition hover:bg-[#f0efff]"
               >
                 <Plus className="size-3.5" />
-              </button>
+              </button>}
             </div>
             <ul aria-label="白板页面列表" className="mt-1 max-h-[min(32rem,calc(100dvh-11rem))] space-y-1 overflow-y-auto overscroll-y-auto pr-0.5">
+              {readOnly ? <>
+                {pageGroups.map(group=>{const collapsed=collapsedPageGroupIds.has(group.id)&&!normalizedPageQuery;return <li key={group.id} className="mb-4 rounded-lg last:mb-0"><div data-page-group-header={group.id} className="relative mb-2 flex min-h-8 items-center gap-1 px-1 text-xs font-extrabold text-[#6f7488]"><span data-page-group-accent={group.accent.id} className={`grid size-6 shrink-0 place-items-center rounded-lg ${group.accent.className}`}><Folder className="size-3.5"/></span><span className="min-w-0 flex-1 truncate">{group.name}</span><button type="button" aria-label={`${collapsed?'展开':'收起'}页面分组 ${group.name}`} aria-expanded={!collapsed} onClick={()=>setCollapsedPageGroupIds(current=>{const next=new Set(current);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})} className="grid size-7 shrink-0 place-items-center border-0 bg-transparent p-0 text-[#959aac] hover:text-[#625bc5]"><ChevronDown size={13} className={collapsed?'-rotate-90':''}/></button><span className="rounded-full bg-[#f0effa] px-1.5 text-[.5625rem] font-bold text-[#7770a7]">{group.pages.length}</span></div>{!collapsed?<ul aria-label={`页面分组 ${group.name}`} className="space-y-2">{group.pages.map(renderPageRow)}</ul>:null}</li>;})}
+                <li>{pageGroups.length>0?<div className="mb-2 flex h-7 items-center gap-1.5 px-1 text-xs font-extrabold text-[#858b9d]"><span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#edf0f5] text-[#747b8f]"><FileText className="size-3.5"/></span>未分组</div>:null}<ul aria-label="未分组页面" className="space-y-2">{ungroupedPages.map(renderPageRow)}</ul></li>
+                {!hasVisiblePageMenuItems?<li className="px-3 py-7 text-center text-xs font-semibold text-[#9297a7]">未找到匹配页面</li>:null}
+              </> : <>
               {pageGroups.map((group) => {
                 const isGroupDropTarget = pageDropTarget?.type === "group" && pageDropTarget.id === group.id;
                 const isRenamingGroup = renamingPageGroupId === group.id;
@@ -7880,8 +7890,9 @@ export function NativeWhiteboard({
               {!hasVisiblePageMenuItems && (
                 <li className="px-3 py-7 text-center text-xs font-semibold text-[#9297a7]">未找到匹配页面</li>
               )}
+              </>}
             </ul>
-            <p className="px-2 pb-1 pt-2 text-[.625rem] font-semibold text-[#9ba0b1]">拖拽分组标题可排序；拖拽页面可排序、移入或移出分组</p>
+            <p className="px-2 pb-1 pt-2 text-[.625rem] font-semibold text-[#9ba0b1]">{readOnly?'只读共享 · 搜索页面或展开分组进行查看':'拖拽分组标题可排序；拖拽页面可排序、移入或移出分组'}</p>
           </div>
         )}
       </div>
