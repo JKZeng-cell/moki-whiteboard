@@ -1,4 +1,5 @@
 import { apiFetch } from "./api-fetch.js";
+import { CanvasImageUnavailableError, loadCanvasImage } from "./canvas-image.js";
 
 export type VisualSelectionRect = {
   x: number;
@@ -43,12 +44,9 @@ export type StoredVisualSelection = {
 };
 
 function imageElement(source: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("选区画面读取失败"));
-    image.src = source;
+  return loadCanvasImage(source).then(image => {
+    if (!image) throw new CanvasImageUnavailableError();
+    return image;
   });
 }
 

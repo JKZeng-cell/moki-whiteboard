@@ -1,5 +1,6 @@
 import type {BoardDocument} from '../core/types.js';
 import {exportNativeWhiteboardImage} from '../vendor/moki/web/components/native-whiteboard.js';
+import {CanvasImageUnavailableError} from '../vendor/moki/web/lib/canvas-image.js';
 
 export async function captureThumbnail(id:string,activeBoardOnly=true){
  const active=()=>location.pathname.endsWith('/'+encodeURIComponent(id));
@@ -21,8 +22,9 @@ export async function captureThumbnail(id:string,activeBoardOnly=true){
   try{
    const result=await Promise.race([exportNativeWhiteboardImage(board.snapshot,{pageId:selected,scope:'canvas',padding:24,maxDimension:640,maxPixels:250000,background:'canvas',requireImages:true}),new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(new Error('截图生成超时')),8000);})]);
    bitmap=await createImageBitmap(result.blob);source=bitmap;width=bitmap.width;height=bitmap.height;
-  }finally{if(timer)clearTimeout(timer);}
+  }catch(error){if(error instanceof CanvasImageUnavailableError)return false;throw error;}finally{if(timer)clearTimeout(timer);}
  }
+ else {const blank=document.createElement('canvas');blank.width=width;blank.height=height;source=blank;}
  if(activeBoardOnly&&!active()){bitmap?.close();return false;}
  const preview=document.createElement('canvas');const scale=Math.min(640/width,400/height,1);
  preview.width=Math.max(1,Math.round(width*scale));preview.height=Math.max(1,Math.round(height*scale));

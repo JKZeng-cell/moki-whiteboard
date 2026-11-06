@@ -50,6 +50,7 @@ import {
 import type { WhiteboardSnapshot } from "../../domain/whiteboard.js";
 import {browserPageViews,type PageViewMemory} from '../lib/whiteboard-view-memory.js';
 import { apiFetch } from "../lib/api-fetch.js";
+import { CanvasImageUnavailableError, isCanvasImageReadable, loadCanvasImage } from "../lib/canvas-image.js";
 import {
   WHITEBOARD_MIN_ZOOM,
   WHITEBOARD_MAX_ZOOM,
@@ -424,7 +425,7 @@ function whiteboardLinkTitle(url: string): string {
 }
 
 export function wrapNativeCanvasText(
-  context: Pick<CanvasRenderingContext2D, "measureText">,
+  context: { measureText(text: string): { width: number } },
   text: string,
   maxWidth: number,
   maxLines = Number.POSITIVE_INFINITY,
@@ -880,22 +881,7 @@ function formatPageEditedAt(page: NativeWhiteboardRecord): string {
 }
 
 function preloadImage(source: string): Promise<HTMLImageElement | undefined> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.decoding = "async";
-    let settled = false;
-    const finish = (value?: HTMLImageElement) => {
-      if (settled) return;
-      settled = true;
-      resolve(value);
-    };
-    image.onload = () => finish(image.naturalWidth > 0 ? image : undefined);
-    image.onerror = () => finish();
-    image.src = source;
-    if (image.complete) {
-      queueMicrotask(() => finish(image.naturalWidth > 0 ? image : undefined));
-    }
-  });
+  return loadCanvasImage(source);
 }
 
 class WhiteboardImageDecodeError extends Error {}
@@ -2939,13 +2925,7 @@ function traceGeoPath(
 }
 
 function loadExportImage(source: string): Promise<HTMLImageElement | undefined> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(undefined);
-    image.src = source;
-  });
+  return loadCanvasImage(source);
 }
 
 export async function exportNativeWhiteboardImage(
@@ -3003,7 +2983,7 @@ export async function exportNativeWhiteboardImage(
     const image = await loadExportImage(source);
     if (image) loadedImages.set(source, image);
   }));
-  if (options.requireImages) {
+  if (options.requireImages !== false) {
     const missingImage = exported.some((shape) => {
       if (shape.type !== "image") return false;
       const asset = imageAsset(snapshot, shape);
@@ -3013,7 +2993,7 @@ export async function exportNativeWhiteboardImage(
       const source = typeof props?.src === "string" ? props.src : "";
       return !source || !loadedImages.has(source);
     });
-    if (missingImage) throw new Error("选中的图片尚未加载完成，请稍后重试复制。");
+    if (missingImage) throw new CanvasImageUnavailableError();
   }
 
   context.save();
@@ -3124,7 +3104,7 @@ export async function exportNativeWhiteboardImage(
       const lineHeight = fontSize * 1.35;
       const maxLines = shape.type === "note"
         ? Math.max(1, Math.floor((bounds.h - 32) / lineHeight))
-        : 20;
+        : isMindMapNode(shape) ? Number.POSITIVE_INFINITY : 20;
       const lines = wrapNativeCanvasText(context, text, maxWidth, maxLines);
       let y = nativeCanvasTextStartY(
         bounds,
@@ -4116,8 +4096,12 @@ export function NativeWhiteboard({
   const penHoverRef = useRef<NativePoint | undefined>(undefined);
   const marqueeRef = useRef<{ start: NativePoint; current: NativePoint } | undefined>(undefined);
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const textToolbarRef = useRef<HTMLDivElement | null>(null);
+  const [textToolbarWidth, setTextToolbarWidth] = useState(0);
+  const textWidthDragRef = useRef<{ pointerId: number; x: number; y: number; width: number; zoom: number; rotation: number } | undefined>(undefined);
+  const textWidthHandleRef = useRef<HTMLButtonElement | null>(null);
   const textDraftRef = useRef<TextDraft | undefined>(undefined);
-  const draftMeasuredSizeRef = useRef<{ width: number; height: number } | undefined>(undefined);
+  const draftMeasuredSizeRef = useRef<{ width: number; height: number; lines?: number } | undefined>(undefined);
   const selectedPaintMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const selectedPaintMenuId = useId();
   const pageMenuRef = useRef<HTMLDivElement | null>(null);
@@ -4140,7 +4124,7 @@ export function NativeWhiteboard({
   );
   const [zoomLabel, setZoomLabel] = useState(100);
   const [textDraft, setTextDraft] = useState<TextDraft>();
-  const [draftMeasuredSize, setDraftMeasuredSize] = useState<{ width: number; height: number }>();
+  const [draftMeasuredSize, setDraftMeasuredSize] = useState<{ width: number; height: number; lines?: number }>();
   const [textColorMenu, setTextColorMenu] = useState<"draft" | "selection">();
   const [selectedPaintMenuOpen, setSelectedPaintMenuOpen] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
@@ -4196,6 +4180,7 @@ export function NativeWhiteboard({
       return existing.promise;
     }
     const image = new Image();
+    image.crossOrigin = "anonymous";
     image.decoding = "async";
     let resolveLoading: (loaded: boolean) => void = () => undefined;
     const promise = new Promise<boolean>((resolve) => {
@@ -4209,7 +4194,7 @@ export function NativeWhiteboard({
     imageCache.current.set(source, entry);
     trimImageCache();
     image.onload = () => {
-      entry.status = image.naturalWidth > 0 ? "loaded" : "error";
+      entry.status = image.naturalWidth > 0 && isCanvasImageReadable(image) ? "loaded" : "error";
       resolveLoading(entry.status === "loaded");
       drawAgainRef.current();
     };
@@ -4225,6 +4210,7 @@ export function NativeWhiteboard({
     await Promise.all(sources.map((source) => ensureImageLoaded(source)));
   }, [ensureImageLoaded]);
   const cachePreviewImage = useCallback((source: string, image: HTMLImageElement) => {
+    if (!isCanvasImageReadable(image)) return;
     imageCache.current.set(source, {
       image,
       status: "loaded",
@@ -4871,7 +4857,7 @@ export function NativeWhiteboard({
           const lineHeight = fontSize * 1.35;
           const maxLines = shape.type === "note"
             ? Math.max(1, Math.floor((bounds.h - 32) / lineHeight))
-            : 20;
+            : isMindMapNode(shape) ? Number.POSITIVE_INFINITY : 20;
           const lines = wrapNativeCanvasText(context, text, maxWidth, maxLines);
           let y = nativeCanvasTextStartY(
             bounds,
@@ -5257,6 +5243,7 @@ export function NativeWhiteboard({
   }, [textStyle]);
 
   const beginTextDraft = useCallback((draft: TextDraft) => {
+    textWidthDragRef.current = undefined;
     setTextColorMenu(undefined);
     draftMeasuredSizeRef.current = undefined;
     setDraftMeasuredSize(undefined);
@@ -5264,10 +5251,39 @@ export function NativeWhiteboard({
     setTextDraft(draft);
   }, []);
 
+  const measureMindMapDraft = useCallback((draft: TextDraft, value = draft.value) => {
+    const style = draft.style ?? textStyle;
+    const fontSize = Math.max(12, ({ s: 14, m: 18, l: 24, xl: 32 } as const)[style.size] * (draft.shapeScale ?? 1));
+    const context = canvasRef.current?.getContext("2d");
+    if (context) context.font = `${style.bold ? "700 " : "400 "}${fontSize}px system-ui, sans-serif`;
+    const width = draft.width ?? 184;
+    const lines = wrapNativeCanvasText(context ?? { measureText: (text: string) => ({ width: Array.from(text).length * fontSize }) }, value, Math.max(20, width - 32));
+    return { width, height: Math.max(draft.height ?? 64, Math.max(1, lines.length) * fontSize * 1.35 + 12), lines: Math.max(1, lines.length) };
+  }, [textStyle]);
+
+  const updateMindMapDraftWidth = useCallback((width: number) => {
+    const current = textDraftRef.current;
+    if (!current?.shapeId || !isMindMapNode(editor.getShape(current.shapeId))) return;
+    const scale = (current.shapeScale ?? 1) * (current.shapeScaleX ?? 1);
+    const next = { ...current, width: Math.min(4096 * scale, Math.max(64 * scale, width)) };
+    textDraftRef.current = next;
+    setTextDraft(next);
+  }, [editor]);
+
+  const moveMindMapDraftWidth = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const start = textWidthDragRef.current;
+    if (!start || event.pointerId !== start.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const delta = (event.clientX - start.x) * Math.cos(start.rotation) + (event.clientY - start.y) * Math.sin(start.rotation);
+    updateMindMapDraftWidth(start.width + delta / start.zoom);
+  };
+
   const commitTextDraft = useCallback(() => {
     const draft = textDraftRef.current;
     if (!draft) return;
     textDraftRef.current = undefined;
+    textWidthDragRef.current = undefined;
     setTextColorMenu(undefined);
     const value = draft.value.trim();
     const style = draft.style ?? textStyle;
@@ -5285,6 +5301,7 @@ export function NativeWhiteboard({
       const shapeScale = Math.max(0.01, draft.shapeScale ?? 1);
       const shapeScaleX = Math.max(0.01, draft.shapeScaleX ?? 1);
       const shapeScaleY = Math.max(0.01, draft.shapeScaleY ?? 1);
+      const mindMapSize = shape && isMindMapNode(shape) ? measureMindMapDraft(draft, value) : undefined;
       editor.updateShapes([{
         id: draft.shapeId,
         props: {
@@ -5300,6 +5317,7 @@ export function NativeWhiteboard({
                 h: autoSize.height / shapeScale / shapeScaleY,
               }
             : {}),
+          ...(mindMapSize ? { w: mindMapSize.width / shapeScale / shapeScaleX, h: Math.max(mindMapSize.height, draftMeasuredSizeRef.current?.height ?? 0) / shapeScale / shapeScaleY } : {}),
           ...(shape?.type === "note"
             ? { labelColor: draftColor }
             : { color: draftColor }),
@@ -5331,10 +5349,11 @@ export function NativeWhiteboard({
     }
     setTextDraft(undefined);
     scheduleDraw();
-  }, [color, editor, measureTextDraft, scheduleDraw, textStyle]);
+  }, [color, editor, measureMindMapDraft, measureTextDraft, scheduleDraw, textStyle]);
 
   const cancelTextDraft = useCallback(() => {
     textDraftRef.current = undefined;
+    textWidthDragRef.current = undefined;
     setTextColorMenu(undefined);
     setTextDraft(undefined);
     scheduleDraw();
@@ -6495,6 +6514,7 @@ export function NativeWhiteboard({
     : undefined;
   const draftShape = textDraft?.shapeId ? editor.getShape(textDraft.shapeId) : undefined;
   const draftIsMindMapNode = Boolean(draftShape && isMindMapNode(draftShape));
+  const mindMapDraftSize = textDraft && draftIsMindMapNode ? measureMindMapDraft(textDraft) : undefined;
   const draftCanvasScale = cameraRef.current.zoom / (Number.isFinite(overlayScale) && overlayScale > 0 ? overlayScale : 1);
   const draftTextScale = textDraft?.shapeScale ?? 1;
   const draftAutoSize = textDraft?.autoSize ? measureTextDraft(textDraft) : undefined;
@@ -6507,21 +6527,48 @@ export function NativeWhiteboard({
   const draftEditorColor = draftShape && draftShape.type !== "text"
     ? COLORS[activeDraftColor]
     : nativeCanvasDisplayColor(activeDraftColor, canvasDark);
-  const draftEstimatedHeight = draftAutoSize
+  const draftEstimatedHeight = mindMapDraftSize
+    ? mindMapDraftSize.height * draftCanvasScale
+    : draftAutoSize
     ? Math.max(1, draftAutoSize.height * draftCanvasScale)
     : textDraft?.height
       ? Math.max(1, textDraft.height * draftCanvasScale)
     : Math.max(40 * draftCanvasScale, scaledDraftFontSize * 1.35 + 32 * draftCanvasScale);
   const draftEditorHeight = Math.max(draftEstimatedHeight, draftMeasuredSize?.height ?? 0);
-  const draftLineCount = Math.max(1, textDraft?.value.split(/\r?\n/u).length ?? 1);
+  const draftLineCount = (mindMapDraftSize ? draftMeasuredSize?.lines ?? mindMapDraftSize.lines : undefined) ?? Math.max(1, textDraft?.value.split(/\r?\n/u).length ?? 1);
   const draftEditorVisualHeight = draftEditorHeight;
   const draftToolbarBelow = Boolean(draftPosition && draftPosition.top < 64);
   const draftVerticalPadding = draftIsMindMapNode && draftEditorHeight
-    ? Math.max(6 * draftCanvasScale, (draftEditorHeight - scaledDraftFontSize * 1.35 * draftLineCount) / 2)
+    ? Math.max(6 * draftCanvasScale, (draftEditorHeight - 2 - scaledDraftFontSize * 1.35 * draftLineCount) / 2)
     : 16 * draftCanvasScale;
   useLayoutEffect(() => {
+    const toolbar = textToolbarRef.current;
+    if (!toolbar) return;
+    const measure = () => setTextToolbarWidth(toolbar.offsetWidth);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure);
+    observer?.observe(toolbar);
+    return () => observer?.disconnect();
+  }, [Boolean(textDraft)]);
+  useLayoutEffect(() => {
     const input = textInputRef.current;
-    if (!textDraft?.autoSize || !input) return;
+    if (!input) return;
+    if (draftIsMindMapNode) {
+      const previous = { height: input.style.height, minHeight: input.style.minHeight, top: input.style.paddingTop, bottom: input.style.paddingBottom };
+      input.style.height = input.style.minHeight = "0px";
+      input.style.paddingTop = input.style.paddingBottom = `${6 * draftCanvasScale}px`;
+      const computed = window.getComputedStyle(input);
+      const border = (Number.parseFloat(computed.borderTopWidth) || 0) + (Number.parseFloat(computed.borderBottomWidth) || 0);
+      const contentHeight = Math.max(0, input.scrollHeight - 12 * draftCanvasScale);
+      const lines = Math.max(1, Math.round(contentHeight / Math.max(1, scaledDraftFontSize * 1.35)));
+      const height = Math.max(draftEstimatedHeight, Math.ceil(input.scrollHeight + border + 1));
+      input.style.height = previous.height;input.style.minHeight = previous.minHeight;
+      input.style.paddingTop = previous.top;input.style.paddingBottom = previous.bottom;
+      draftMeasuredSizeRef.current = { width: draftEstimatedWidth / draftCanvasScale, height: height / draftCanvasScale, lines };
+      setDraftMeasuredSize(current => current?.width === draftEstimatedWidth && current.height === height && current.lines === lines ? current : { width: draftEstimatedWidth, height, lines });
+      return;
+    }
+    if (!textDraft?.autoSize) return;
 
     const previousWidth = input.style.width;
     const previousHeight = input.style.height;
@@ -6552,10 +6599,12 @@ export function NativeWhiteboard({
     activeDraftStyle.italic,
     activeDraftStyle.size,
     draftCanvasScale,
+    draftIsMindMapNode,
     draftEstimatedHeight,
     draftEstimatedWidth,
     draftHorizontalPadding,
     draftVerticalPadding,
+    scaledDraftFontSize,
     textDraft?.shapeId,
     textDraft?.value,
   ]);
@@ -7411,11 +7460,12 @@ export function NativeWhiteboard({
       {textDraft && draftPosition && (
         <>
           <div
+            ref={textToolbarRef}
             aria-label="编辑文字字号"
             data-whiteboard-control-surface
-            className="absolute z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-[0_8px_24px_rgba(35,39,61,.16)] backdrop-blur"
+            className="absolute z-30 flex items-center gap-1 rounded-xl border border-[#e2e4ed] bg-white/95 p-1 shadow-[0_8px_24px_rgba(35,39,61,.16)] backdrop-blur"
             style={{
-              left: draftPosition.left + draftEditorWidth / 2,
+              left: Math.max(8 + textToolbarWidth / 2, Math.min(draftPosition.left + draftEditorWidth / 2, (rootRef.current?.clientWidth ?? 800) - 8 - textToolbarWidth / 2)),
               top: draftToolbarBelow
                 ? draftPosition.top + draftEditorVisualHeight + 8
                 : draftPosition.top - 8,
@@ -7457,7 +7507,7 @@ export function NativeWhiteboard({
               textDraftRef.current = next;
               setTextDraft(next);
             }}
-            onBlur={commitTextDraft}
+            onBlur={(event) => { if (!textWidthHandleRef.current || event.relatedTarget !== textWidthHandleRef.current) commitTextDraft(); }}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault();
@@ -7474,13 +7524,15 @@ export function NativeWhiteboard({
               width: draftEditorWidth,
               height: draftEditorHeight,
               minHeight: draftEditorHeight,
-              paddingLeft: draftHorizontalPadding,
-              paddingRight: draftHorizontalPadding,
+              paddingLeft: draftIsMindMapNode ? Math.max(0, draftHorizontalPadding - 1) : draftHorizontalPadding,
+              paddingRight: draftIsMindMapNode ? Math.max(0, draftHorizontalPadding - 1) : draftHorizontalPadding,
               paddingTop: draftVerticalPadding,
               paddingBottom: draftVerticalPadding,
               color: draftEditorColor,
               borderColor: nativeCanvasSelectionPalette(canvasDark).stroke,
               fontSize: scaledDraftFontSize,
+              fontFamily: draftIsMindMapNode ? "system-ui, sans-serif" : undefined,
+              wordBreak: draftIsMindMapNode ? "break-all" : undefined,
               fontWeight: activeDraftStyle.bold ? 700 : 400,
               fontStyle: activeDraftStyle.italic ? "italic" : "normal",
               // The app disables synthetic font faces globally. MOKI CJK has no
@@ -7493,6 +7545,57 @@ export function NativeWhiteboard({
               transformOrigin: "center center",
             }}
           />
+          {draftIsMindMapNode && !readOnly ? (
+            <button
+              ref={textWidthHandleRef}
+              type="button"
+              role="slider"
+              aria-label="调整思维导图输入框宽度"
+              aria-orientation="horizontal"
+              aria-valuemin={64}
+              aria-valuemax={4096}
+              aria-valuenow={Math.round((textDraft.width ?? 184) / (textDraft.shapeScale ?? 1) / (textDraft.shapeScaleX ?? 1))}
+              title="拖动调整宽度；方向键微调"
+              data-whiteboard-control-surface
+              className="absolute z-30 flex touch-none select-none items-center justify-center rounded-full border bg-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#625bc5]"
+              style={{
+                left: draftPosition.left + draftEditorWidth / 2 + Math.cos((textDraft.rotation ?? 0) * Math.PI / 180) * draftEditorWidth / 2,
+                top: draftPosition.top + draftEditorHeight / 2 + Math.sin((textDraft.rotation ?? 0) * Math.PI / 180) * draftEditorWidth / 2,
+                width: 12, height: 32, minWidth: 12, minHeight: 32, padding: 0,
+                transform: `translate(-50%, -50%) rotate(${textDraft.rotation ?? 0}deg)`,
+                cursor: edgeResizeCursor("e", textDraft.rotation ?? 0),
+                borderColor: nativeCanvasSelectionPalette(canvasDark).stroke,
+                backgroundColor: canvasDark ? "#242b3f" : "#fff",
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();event.stopPropagation();
+                textWidthDragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, width: textDraftRef.current?.width ?? 184, zoom: cameraRef.current.zoom, rotation: (textDraftRef.current?.rotation ?? 0) * Math.PI / 180 };
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={moveMindMapDraftWidth}
+              onPointerUp={(event) => {
+                if (textWidthDragRef.current?.pointerId !== event.pointerId) return;
+                moveMindMapDraftWidth(event);textWidthDragRef.current = undefined;
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={(event) => {
+                const start = textWidthDragRef.current;
+                if (start?.pointerId === event.pointerId) { updateMindMapDraftWidth(start.width);textWidthDragRef.current = undefined; }
+              }}
+              onLostPointerCapture={() => { textWidthDragRef.current = undefined; }}
+              onBlur={(event) => { if (event.relatedTarget !== textInputRef.current) commitTextDraft(); }}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                const scale = (textDraft.shapeScale ?? 1) * (textDraft.shapeScaleX ?? 1);
+                if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+                  event.preventDefault();
+                  updateMindMapDraftWidth(event.key === "Home" ? 64 * scale : event.key === "End" ? 4096 * scale : (textDraftRef.current?.width ?? 184) + (event.key === "ArrowRight" ? 1 : -1) * (event.shiftKey ? 32 : 8) * scale);
+                } else if (event.key === "Escape") { event.preventDefault();cancelTextDraft(); }
+                else if (event.key === "Enter") { event.preventDefault();commitTextDraft(); }
+              }}
+            ><span aria-hidden="true" className="h-3 w-0.5 rounded-full" style={{ backgroundColor: nativeCanvasSelectionPalette(canvasDark).stroke }} /></button>
+          ) : null}
         </>
       )}
       {!readOnly && !textDraft && selectedTextToolbarPosition && (

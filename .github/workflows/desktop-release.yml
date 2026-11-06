@@ -6,7 +6,7 @@ on:
       tag:
         description: New release revision tag (application version is unchanged)
         required: true
-        default: v0.1.8-r5
+        default: v0.1.8-r6
 
 permissions:
   contents: read

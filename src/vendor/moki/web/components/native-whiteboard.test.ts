@@ -404,6 +404,75 @@ describe("native whiteboard history", () => {
     expect(screen.queryByRole("button", { name: "拖拽连接子节点" })).not.toBeInTheDocument();
   });
 
+  it("resizes a mind-map text draft without scaling text, saves the width, and supports undo", async () => {
+    mockCanvas();
+    const store = new NativeWhiteboardStore();
+    const seed = new NativeWhiteboardEditor(store);
+    seed.createShapes([{ id: "shape:width-node", type: "geo", x: 100, y: 100, props: { w: 200, h: 64, size: "m", scale: 2, scaleX: 1.5, mokiMindMapNode: true, mokiMindMapRoot: true, mokiMindMapId: "width-test", richText: "想法" } }]);
+    let editor: NativeWhiteboardEditor | undefined;
+    render(createElement(NativeWhiteboard, { store, onMount: value => { editor = value; } }));
+    await waitFor(() => expect(editor!.getViewportPageBounds().w).toBeCloseTo(800));
+    const canvas = document.querySelector(".native-whiteboard-canvas")!;
+    const bounds = editor!.getShapePageBounds("shape:width-node")!;
+    const viewport = editor!.getViewportPageBounds(), zoom = 800 / viewport.w;
+    fireEvent.doubleClick(canvas, { clientX: (bounds.center.x - viewport.x) * zoom, clientY: (bounds.center.y - viewport.y) * zoom });
+    const input = await screen.findByRole("textbox", { name: "输入白板文字" });
+    const handle = screen.getByRole("slider", { name: "调整思维导图输入框宽度" });
+    const fontSize = input.style.fontSize;
+    fireEvent.pointerDown(handle, { pointerId: 81, button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 81, clientX: 100 + 120 * zoom, clientY: 100 });
+    fireEvent.pointerUp(handle, { pointerId: 81, clientX: 100 + 120 * zoom, clientY: 100 });
+    expect(handle).toHaveAttribute("aria-valuenow", "240");
+    expect(input.style.fontSize).toBe(fontSize);
+    expect(editor!.getShape("shape:width-node")!.props.w).toBe(200);
+    fireEvent.pointerDown(handle, { pointerId: 82, button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 82, clientX: 100 + 90 * zoom, clientY: 100 });
+    expect(handle).toHaveAttribute("aria-valuenow", "270");
+    fireEvent.pointerCancel(handle, { pointerId: 82 });
+    expect(handle).toHaveAttribute("aria-valuenow", "240");
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(editor!.getShape("shape:width-node")!.props).toMatchObject({ w: 240, scale: 2, scaleX: 1.5, size: "m" });
+    expect(editor!.undo()).toBe(true);
+    expect(editor!.getShape("shape:width-node")!.props.w).toBe(200);
+    expect(editor!.redo()).toBe(true);
+    const reopened = new NativeWhiteboardStore();reopened.replace(structuredClone(store.snapshot));
+    expect(reopened.snapshot.document.store["shape:width-node"]?.props).toMatchObject({ w: 240 });
+  });
+
+  it("cancels mind-map width changes and supports keyboard width adjustment with wrapped text", async () => {
+    const context = mockCanvas();
+    context.set("measureText", (text: string) => ({ width: text.length * 18 }));
+    const store = new NativeWhiteboardStore(), seed = new NativeWhiteboardEditor(store);
+    seed.createShapes([{ id: "shape:width-node", type: "geo", x: 100, y: 100, props: { w: 200, h: 64, size: "m", mokiMindMapNode: true, mokiMindMapRoot: true, mokiMindMapId: "width-test", richText: "想法" } }]);
+    let editor: NativeWhiteboardEditor | undefined;
+    render(createElement(NativeWhiteboard, { store, onMount: value => { editor = value; } }));
+    await waitFor(() => expect(editor!.getViewportPageBounds().w).toBeCloseTo(800));
+    const open = async () => {
+      const viewport = editor!.getViewportPageBounds(), bounds = editor!.getShapePageBounds("shape:width-node")!, zoom = 800 / viewport.w;
+      fireEvent.doubleClick(document.querySelector(".native-whiteboard-canvas")!, { clientX: (bounds.center.x - viewport.x) * zoom, clientY: (bounds.center.y - viewport.y) * zoom });
+      return screen.findByRole("textbox", { name: "输入白板文字" });
+    };
+    let input = await open();
+    let handle = screen.getByRole("slider", { name: "调整思维导图输入框宽度" });
+    fireEvent.keyDown(handle, { key: "ArrowRight", shiftKey: true });
+    expect(handle).toHaveAttribute("aria-valuenow", "232");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(editor!.getShape("shape:width-node")!.props.w).toBe(200);
+    input = await open();
+    handle = screen.getByRole("slider", { name: "调整思维导图输入框宽度" });
+    fireEvent.blur(input, { relatedTarget: handle });
+    expect(input).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "这是一个需要自动换行的完整思维导图节点内容" } });
+    fireEvent.keyDown(handle, { key: "End" });
+    expect(handle).toHaveAttribute("aria-valuenow", "4096");
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(handle).toHaveAttribute("aria-valuenow", "64");
+    expect(Number.parseFloat(input.style.height)).toBeGreaterThan(64);
+    fireEvent.keyDown(handle, { key: "Enter" });
+    expect(editor!.getShape("shape:width-node")!.props.w).toBe(64);
+    expect(Number(editor!.getShape("shape:width-node")!.props.h)).toBeGreaterThan(64);
+  });
+
   it("creates a connected child at the blank drop point of an output handle", async () => {
     mockCanvas();
     const store = new NativeWhiteboardStore();
@@ -2757,6 +2826,7 @@ describe("native whiteboard history", () => {
   });
 
   it("keeps the in-memory preview element out of the persisted snapshot", async () => {
+    mockCanvas();
     class LoadedImage {
       complete = true;
       naturalWidth = 640;
