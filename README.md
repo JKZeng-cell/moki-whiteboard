@@ -18,11 +18,11 @@ Use MOKI when an agent needs to organize references, edit a mind map, or manipul
 
 ## Windows 下载 / Windows downloads
 
-Windows x64 · **v0.1.8 · 2026-11-05 更新 / refresh** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r5)
+Windows x64 · **v0.1.8 · 2026-11-05 更新 / refresh** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r6)
 
-- [安装程序 / Installer (.exe)](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-Setup-0.1.8-x64.exe)
-- [免安装包 / Portable ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-Windows-x64.zip)
-- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/SHA256SUMS-0.1.8.txt)
+- [安装程序 / Installer (.exe)](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/MOKI-Whiteboard-Setup-0.1.8-x64.exe)
+- [免安装包 / Portable ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/MOKI-Whiteboard-0.1.8-Windows-x64.zip)
+- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/SHA256SUMS-0.1.8.txt)
 
 安装包尚未代码签名，Windows 可能显示未知发布者或 SmartScreen 提示。请核对下载文件的 SHA-256。 / Packages are not code-signed; Windows may show an unknown-publisher or SmartScreen warning. Verify the SHA-256 checksum before running.
 
@@ -30,11 +30,11 @@ Windows x64 · **v0.1.8 · 2026-11-05 更新 / refresh** · [Release / 更新说
 
 ## macOS 下载 / macOS downloads
 
-Apple Silicon（arm64）· **v0.1.8 · 2026-11-05 更新 / refresh** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r5)
+Apple Silicon（arm64）· **v0.1.8 · 2026-11-05 更新 / refresh** · [Release / 更新说明](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r6)
 
-- [DMG 安装包 / Installer](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg)
-- [完整应用 ZIP / App ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/MOKI-Whiteboard-0.1.8-macOS-arm64.zip)
-- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r5/SHA256SUMS-0.1.8-macOS-arm64.txt)
+- [DMG 安装包 / Installer](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg)
+- [完整应用 ZIP / App ZIP](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/MOKI-Whiteboard-0.1.8-macOS-arm64.zip)
+- [SHA-256 校验 / Checksums](https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r6/SHA256SUMS-0.1.8-macOS-arm64.txt)
 
 仅支持 Apple Silicon，暂不支持 Intel Mac。当前应用为 ad-hoc 签名，未进行 Developer ID 签名和 Apple 公证；首次打开受阻时，请看[中文处理步骤](#macos-first-launch)。 / Apple Silicon only; Intel Macs are unavailable. The app is ad-hoc signed, without Developer ID signing or Apple notarization. See [first-launch help](#macos-first-launch-en) if macOS blocks it.
 
@@ -64,6 +64,8 @@ MOKI 白板从 MOKI 工作台的无限白板能力演化而来，提供独立的
 - 白板管理：新建、搜索、重命名、复制、删除及上次编辑内容缩略图；卡片操作收纳到“更多”菜单，并提供共享入口，编辑页显示当前白板名称。
 - 无限画布：连续无级缩放、平移、适应内容、缩略图导航与全屏。
 - 内容工具：便签、文本、六类图形、四种箭头、四档画笔、贝塞尔钢笔路径、9 类思维导图模板、图片 / GIF / 视频、文件和链接。
+- 思维导图输入宽度：双击节点后拖动输入框右侧拖柄调整宽度，文字自动换行且字号不变；宽度会保存，支持方向键微调、Esc 取消、撤销与重做。
+- 截图与导出：网络图片按 CORS 加载并校验画布可读性，修复 Agent 编辑后自动截图报错。若图片源禁止跨域读取，保留上次缩略图；导出提示先下载并作为本地图片置入，不输出缺图 PNG。
 - 编辑交互：多选、旋转、角点缩放、边缘拉伸、编组 / 资料夹、对齐 / 分布、剪贴板、撤销 / 重做和就地文本编辑。
 - 分组整理：将相关内容编组，收起为画布中的虚拟文件夹（资料夹）；需要时再展开，分组管理整洁有序。
 - 页面系统：多页面、页面分组、跨页面内容检索与定位、页面历史版本和恢复。
@@ -178,7 +180,7 @@ npm ci
 npm run desktop:dist:mac
 ```
 
-已发布的 DMG、ZIP 和校验文件可从[上方下载区](#macos-downloads)或 [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r5) 获取。自行构建也可手动运行 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)；其原生构建及客户端 / MCP 验证产物保存为 Actions 附件 30 天，不自动发布到 Release。维护者通过独立发布工作流核对来源和哈希后再发布已验证产物。Intel Mac 暂不提供安装包：当前 Office 公式引擎不支持 `darwin-x64`。
+已发布的 DMG、ZIP 和校验文件可从[上方下载区](#macos-downloads)或 [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r6) 获取。自行构建也可手动运行 [macOS Packages 工作流](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml)；其原生构建及客户端 / MCP 验证产物保存为 Actions 附件 30 天，不自动发布到 Release。维护者通过独立发布工作流核对来源和哈希后再发布已验证产物。Intel Mac 暂不提供安装包：当前 Office 公式引擎不支持 `darwin-x64`。
 
 Mac 数据默认在 `~/Library/Application Support/moki-whiteboard`，素材缓存位于其中的 `whiteboard-materials`，与 `.app` 包隔离；可在设置中更改缓存路径。当前构建不使用 Developer ID 签名或 Apple 公证，不能视为 Gatekeeper 已认可的正式签名包。
 
@@ -193,7 +195,7 @@ Mac 数据默认在 `~/Library/Application Support/moki-whiteboard`，素材缓�
 shasum -a 256 ~/Downloads/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg
 ```
 
-本次 DMG 的结果应为 `10b0403328e453a49777707c97379207eef0df4a41387bc9a8745a7ad437ddef`；ZIP 的校验值见下载区的 SHA-256 文件。
+本次 DMG 的结果应为 `400d29b0b8f1b57b3718c7e90a3ae2f9f2fcc4e19b308152427f863311756666`；ZIP 的校验值见下载区的 SHA-256 文件。
 
 3. 尝试打开一次应用。若提示“无法验证开发者”或“Apple 无法验证此 App 是否包含恶意软件”，关闭提示，再前往 **系统设置 → 隐私与安全性 → 安全性 → 仍要打开**，按提示认证并确认打开。Apple 的[官方说明](https://support.apple.com/zh-cn/102445)介绍了这个单个应用例外。
 
@@ -272,6 +274,8 @@ MOKI Whiteboard is a standalone React / Electron application evolved from the in
 - Board management: create, search, rename, duplicate, delete, and view thumbnails from the last editing session. Card actions and sharing are collected in a **More** menu. The editor header shows the current board name.
 - Infinite canvas: continuous zoom, pan, fit to content, minimap navigation, and fullscreen.
 - Creation tools: sticky notes, text, six shape types, four arrow styles, four brush sizes, Bézier pen paths, nine mind-map templates, images / GIFs / videos, files, and links.
+- Mind-map input width: double-click a node and drag its right-side handle without scaling the font. Text wraps, widths are saved, arrow keys fine-tune, Escape cancels, and undo/redo remains available.
+- Screenshot safety: load network images with CORS and verify canvas readability before drawing. Fix Agent-triggered thumbnail errors; retain the previous thumbnail and reject incomplete PNG exports if a source disallows CORS. Download and insert those images locally to export them.
 - Editing: multi-select, rotation, corner scaling, edge resizing, groups / folders, alignment / distribution, clipboard, undo / redo, and inline text editing.
 - Group organization: group related content and collapse it into a virtual folder on the canvas. Expand it when needed to keep your workspace tidy and organized.
 - Pages: multiple pages, page groups, cross-page content search and navigation, and per-page version history and restoration.
@@ -382,7 +386,7 @@ npm ci
 npm run desktop:dist:mac
 ```
 
-Published DMG / ZIP downloads and checksums are available in the [download section](#macos-downloads) and [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r5). For your own builds, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml): the native arm64 runner verifies the extracted app and MCP integration, then retains artifacts for 30 days without automatic publication. Maintainers publish verified artifacts separately after checking provenance and hashes. Intel Mac packages are unavailable because the bundled Office formula engine does not support `darwin-x64`.
+Published DMG / ZIP downloads and checksums are available in the [download section](#macos-downloads) and [GitHub Release](https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r6). For your own builds, manually run [macOS Packages](https://github.com/JKZeng-cell/moki-whiteboard/actions/workflows/macos-packages.yml): the native arm64 runner verifies the extracted app and MCP integration, then retains artifacts for 30 days without automatic publication. Maintainers publish verified artifacts separately after checking provenance and hashes. Intel Mac packages are unavailable because the bundled Office formula engine does not support `darwin-x64`.
 
 Data defaults to `~/Library/Application Support/moki-whiteboard`; the default asset cache is its `whiteboard-materials` subdirectory, outside the `.app` bundle. The cache path remains configurable. These builds are not Developer ID-signed or Apple-notarized; do not treat them as Gatekeeper-approved distribution builds.
 
@@ -397,7 +401,7 @@ Data defaults to `~/Library/Application Support/moki-whiteboard`; the default as
 shasum -a 256 ~/Downloads/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg
 ```
 
-The DMG hash is `10b0403328e453a49777707c97379207eef0df4a41387bc9a8745a7ad437ddef`. ZIP checksums are in the linked checksum file.
+The DMG hash is `400d29b0b8f1b57b3718c7e90a3ae2f9f2fcc4e19b308152427f863311756666`. ZIP checksums are in the linked checksum file.
 
 3. Try opening the app once. For an unidentified-developer or unverifiable-app alert, dismiss it, then go to **System Settings → Privacy & Security → Security → Open Anyway**. Authenticate and confirm opening. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
