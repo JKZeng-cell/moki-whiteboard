@@ -1,4 +1,5 @@
 import type { WhiteboardSnapshot } from "../domain/whiteboard.js";
+import {mindMapConnectionPorts} from './mind-map-connection.js';
 import {
   createNativeId,
   isNativeShape,
@@ -423,25 +424,8 @@ function directionFor(parent: NativeWhiteboardShape, child: NativeWhiteboardShap
 }
 
 function connectionPoints(parent: NativeWhiteboardShape, child: NativeWhiteboardShape): { start: NativePoint; end: NativePoint } {
-  const parentBounds = nativeShapeBounds(parent);
-  const childBounds = nativeShapeBounds(child);
-  const direction = directionFor(parent, child);
-  if (direction === "down") {
-    return {
-      start: { x: parentBounds.center.x, y: parentBounds.y + parentBounds.h },
-      end: { x: childBounds.center.x, y: childBounds.y },
-    };
-  }
-  if (direction === "left") {
-    return {
-      start: { x: parentBounds.x, y: parentBounds.center.y },
-      end: { x: childBounds.x + childBounds.w, y: childBounds.center.y },
-    };
-  }
-  return {
-    start: { x: parentBounds.x + parentBounds.w, y: parentBounds.center.y },
-    end: { x: childBounds.x, y: childBounds.center.y },
-  };
+  const ports=mindMapConnectionPorts(parent,child);
+  return {start:ports.start.point,end:ports.end.point};
 }
 
 function hiddenForNode(nodes: Map<string, NativeWhiteboardShape>, node: NativeWhiteboardShape): boolean {
@@ -533,6 +517,10 @@ export function synchronizeMindMapSnapshot(snapshot: WhiteboardSnapshot): boolea
       || Math.abs(finite(currentEnd?.x) - nextEnd.x) > 0.001
       || Math.abs(finite(currentEnd?.y) - nextEnd.y) > 0.001
       || edge.props.mokiMindMapHidden !== hidden
+      || finite(edge.rotation) !== 0
+      || finite(edge.props.scale,1) !== 1
+      || finite(edge.props.scaleX,1) !== 1
+      || finite(edge.props.scaleY,1) !== 1
     ) {
       edge.x = start.x;
       edge.y = start.y;

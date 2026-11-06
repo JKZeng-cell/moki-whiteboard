@@ -48,6 +48,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type { WhiteboardSnapshot } from "../../domain/whiteboard.js";
+import {hitMindMapCurve,mindMapConnectionPorts,mindMapCurve,mindMapCurveBounds,mindMapEdgeCurve,mindMapNodePort,type MindMapCurve} from '../../whiteboard/mind-map-connection.js';
 import {browserPageViews,type PageViewMemory} from '../lib/whiteboard-view-memory.js';
 import { apiFetch } from "../lib/api-fetch.js";
 import { CanvasImageUnavailableError, isCanvasImageReadable, loadCanvasImage } from "../lib/canvas-image.js";
@@ -286,22 +287,15 @@ function drawNativeArrow(
   end: NativePoint,
   style: NativeArrowStyle,
   headSize: number,
-  curved = false,
+  curve?: MindMapCurve,
 ): void {
+  if(curve){start=curve.start;end=curve.end;}
   context.save();
   context.setLineDash(style === "dashed" ? [Math.max(4, headSize * 0.72), Math.max(3, headSize * 0.45)] : []);
   context.beginPath();
   context.moveTo(start.x, start.y);
-  if (curved) {
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      const controlX = start.x + dx * 0.52;
-      context.bezierCurveTo(controlX, start.y, controlX, end.y, end.x, end.y);
-    } else {
-      const controlY = start.y + dy * 0.52;
-      context.bezierCurveTo(start.x, controlY, end.x, controlY, end.x, end.y);
-    }
+  if (curve) {
+    context.bezierCurveTo(curve.control1.x, curve.control1.y, curve.control2.x, curve.control2.y, end.x, end.y);
   } else {
     context.lineTo(end.x, end.y);
   }
@@ -326,8 +320,8 @@ function drawNativeArrow(
     );
     context.stroke();
   };
-  drawHead(end, start);
-  if (style === "double") drawHead(start, end);
+  drawHead(end, curve?.control2 ?? start);
+  if (style === "double") drawHead(start, curve?.control1 ?? end);
   context.restore();
 }
 
@@ -2941,7 +2935,7 @@ export async function exportNativeWhiteboardImage(
   if (!exported.length) {
     throw new Error(options.scope === "selection" ? "请先选择要导出的白板内容。" : "当前页面没有可导出的内容。");
   }
-  const boxes = exported.map(nativeShapeVisualBounds);
+  const boxes = exported.map(shape => { const curve=mindMapEdgeCurve(snapshot,shape);return curve?mindMapCurveBounds(curve):nativeShapeVisualBounds(shape); });
   const left = Math.min(...boxes.map((box) => box.x));
   const top = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.x + box.w));
@@ -3013,7 +3007,7 @@ export async function exportNativeWhiteboardImage(
     context.lineWidth = lineWidth;
     context.lineCap = "round";
     context.lineJoin = "round";
-    const rotation = Number(shape.rotation) || 0;
+    const rotation = shape.props.mokiMindMapEdge===true ? 0 : Number(shape.rotation) || 0;
     if (rotation) {
       context.translate(bounds.center.x, bounds.center.y);
       context.rotate(rotation * Math.PI / 180);
@@ -3046,7 +3040,7 @@ export async function exportNativeWhiteboardImage(
         { x: shape.x + end.x * shapeScaleX, y: shape.y + end.y * shapeScaleY },
         nativeArrowStyle(shape.props.arrowStyle),
         14 * shapeScale,
-        shape.props.mokiMindMapEdge === true,
+        mindMapEdgeCurve(snapshot,shape),
       );
     } else if (shape.type === "image") {
       const asset = imageAsset(snapshot, shape);
@@ -3634,7 +3628,9 @@ function hitArrowBody(
   point: NativePoint,
   shape: NativeWhiteboardShape | undefined,
   zoom: number,
+  curve?: MindMapCurve,
 ): boolean {
+  if (curve) return hitMindMapCurve(curve,point,9/zoom);
   const endpoints = shape ? nativeArrowEndpoints(shape) : undefined;
   if (!endpoints) return false;
   const dx = endpoints.end.x - endpoints.start.x;
@@ -4704,7 +4700,7 @@ export function NativeWhiteboard({
         context.lineWidth = width;
         context.lineCap = "round";
         context.lineJoin = "round";
-        const rotation = Number(shape.rotation) || 0;
+        const rotation = shape.props.mokiMindMapEdge===true ? 0 : Number(shape.rotation) || 0;
         if (rotation) {
           context.translate(bounds.center.x, bounds.center.y);
           context.rotate(rotation * Math.PI / 180);
@@ -4738,7 +4734,7 @@ export function NativeWhiteboard({
             { x: x2, y: y2 },
             nativeArrowStyle(shape.props.arrowStyle),
             14 * shapeScale,
-            shape.props.mokiMindMapEdge === true,
+            mindMapEdgeCurve(store.snapshot,shape),
           );
         } else if (shape.type === "image") {
           const asset = imageAsset(store.snapshot, shape);
@@ -5362,6 +5358,8 @@ export function NativeWhiteboard({
   const hitShape = useCallback((point: NativePoint) => {
     const tolerance = 8 / cameraRef.current.zoom;
     return [...visibleShapes(store.snapshot)].reverse().find((shape) => {
+      const curve=mindMapEdgeCurve(store.snapshot,shape);
+      if(curve)return hitMindMapCurve(curve,point,tolerance);
       const box = nativeShapeBounds(shape);
       const rotation = (Number(shape.rotation) || 0) * Math.PI / 180;
       const localPoint = rotation
@@ -5373,7 +5371,7 @@ export function NativeWhiteboard({
 
   const hitArrowAtPoint = useCallback((point: NativePoint) => (
     [...visibleShapes(store.snapshot)].reverse().find((shape) => (
-      shape.type === "arrow" && hitArrowBody(point, shape, cameraRef.current.zoom)
+      shape.type === "arrow" && hitArrowBody(point, shape, cameraRef.current.zoom,mindMapEdgeCurve(store.snapshot,shape))
     ))
   ), [store]);
 
@@ -6824,14 +6822,7 @@ export function NativeWhiteboard({
     shape: NativeWhiteboardShape,
     mode: MindMapConnectionDraft["mode"],
   ): NativePoint => {
-    const bounds = nativeShapeBounds(shape);
-    const direction = String(shape.props.mokiMindMapDirection ?? "right");
-    const output = mode === "set-child";
-    const pagePoint = direction === "down"
-      ? { x: bounds.center.x, y: output ? bounds.y + bounds.h : bounds.y }
-      : direction === "left"
-        ? { x: output ? bounds.x : bounds.x + bounds.w, y: bounds.center.y }
-        : { x: output ? bounds.x + bounds.w : bounds.x, y: bounds.center.y };
+    const pagePoint=mindMapNodePort(shape,mode==='set-child').point;
     return {
       x: toOverlayPixel((pagePoint.x - cameraRef.current.x) * cameraRef.current.zoom),
       y: toOverlayPixel((pagePoint.y - cameraRef.current.y) * cameraRef.current.zoom),
@@ -6933,19 +6924,24 @@ export function NativeWhiteboard({
   const connectionTargetBounds = connectionTargetShape
     ? nativeShapeBounds(connectionTargetShape)
     : undefined;
-  const connectionPath = mindMapConnectionDraft
+  const connectionCurve = mindMapConnectionDraft
     ? (() => {
-        const { start, current } = mindMapConnectionDraft;
-        const dx = current.x - start.x;
-        const dy = current.y - start.y;
-        if (Math.abs(dx) >= Math.abs(dy)) {
-          const bend = Math.max(36, Math.abs(dx) * 0.45) * (dx < 0 ? -1 : 1);
-          return `M ${start.x} ${start.y} C ${start.x + bend} ${start.y}, ${current.x - bend} ${current.y}, ${current.x} ${current.y}`;
+        const draft=mindMapConnectionDraft,source=editor.getShape(draft.sourceId);
+        if(!source)return;
+        const output=draft.mode==='set-child';
+        const toScreen=(point:NativePoint)=>({x:toOverlayPixel((point.x-cameraRef.current.x)*cameraRef.current.zoom),y:toOverlayPixel((point.y-cameraRef.current.y)*cameraRef.current.zoom)});
+        if(connectionTargetShape){
+          const child=output?connectionTargetShape:source;
+          const reconnected={...child,props:{...child.props,mokiMindMapAutoManaged:false}};
+          const ports=output?mindMapConnectionPorts(source,reconnected):mindMapConnectionPorts(connectionTargetShape,reconnected);
+          const start=output?ports.start:ports.end,end=output?ports.end:ports.start;
+          return mindMapCurve({...start,point:toScreen(start.point)},{...end,point:toScreen(end.point)});
         }
-        const bend = Math.max(36, Math.abs(dy) * 0.45) * (dy < 0 ? -1 : 1);
-        return `M ${start.x} ${start.y} C ${start.x} ${start.y + bend}, ${current.x} ${current.y - bend}, ${current.x} ${current.y}`;
+        const port=mindMapNodePort(source,output);
+        return mindMapCurve({point:toScreen(port.point),normal:port.normal},{point:draft.current,normal:{x:-port.normal.x,y:-port.normal.y}});
       })()
     : undefined;
+  const connectionPath=connectionCurve?`M ${connectionCurve.start.x} ${connectionCurve.start.y} C ${connectionCurve.control1.x} ${connectionCurve.control1.y}, ${connectionCurve.control2.x} ${connectionCurve.control2.y}, ${connectionCurve.end.x} ${connectionCurve.end.y}`:undefined;
   return (
     <div ref={rootRef} onPointerDownCapture={event=>{if(readOnly&&(event.target as Element).closest('video,audio')){const shape=hitShape(eventPoint(event));if(shape)selectReadonly([shape.id]);}}} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape?.type==='group-folder'){const group=nativeGroupId(shape);if(group)onReadonlyGroupToggle?.(group,false);}else if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){if((event.target as Element).closest('[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;event.preventDefault();event.stopPropagation();const shape=hitShape(eventPoint(event));if(shape&&!editor.getSelectedShapeIds().includes(shape.id))selectReadonly([shape.id]);else if(!shape)selectReadonly([]);const rect=rootRef.current!.getBoundingClientRect();onReadonlyContextMenu?.({x:event.clientX-rect.left,y:event.clientY-rect.top});}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
@@ -6992,7 +6988,7 @@ export function NativeWhiteboard({
       {mindMapConnectionDraft && connectionPath ? (
         <svg aria-hidden="true" className="pointer-events-none absolute inset-0 z-[42] h-full w-full overflow-visible">
           <path d={connectionPath} fill="none" stroke="#625bc5" strokeWidth="3" strokeLinecap="round" strokeDasharray="7 5" />
-          <circle cx={mindMapConnectionDraft.current.x} cy={mindMapConnectionDraft.current.y} r="5" fill="#625bc5" />
+          <circle cx={connectionCurve?.end.x} cy={connectionCurve?.end.y} r="5" fill="#625bc5" />
         </svg>
       ) : null}
       {connectionTargetBounds ? (
