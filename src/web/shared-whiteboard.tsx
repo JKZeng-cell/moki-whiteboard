@@ -20,6 +20,7 @@ const VIEW_SHORTCUTS=[{label:'选择 / 框选内容',keys:'点击 / 拖动空白
 export function SharedWhiteboard({token}:{token:string}){
  const store=useMemo(()=>createNativeWhiteboardStore(),[]),editor=useRef<NativeWhiteboardEditor|null>(null);
  const [board,setBoard]=useState<SharedBoard>(),[page,setPage]=useState(''),[error,setError]=useState(''),[materials,setMaterials]=useState(false),[query,setQuery]=useState('');
+ useEffect(()=>{document.title=board?.title?board.title+' - MOKI 白板':'MOKI 白板';return()=>{document.title='MOKI 白板';};},[board?.title]);
  const [preview,setPreview]=useState<SharedMaterial>(),[shortcuts,setShortcuts]=useState(false),[fullscreen,setFullscreen]=useState(false),[exportError,setExportError]=useState('');
  const {dark,setMode}=useTheme();
  const visitor=useMemo(()=>createSharedVisitor(token),[token]);
