@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog, ipcMain, clipboard,Menu,Tray,nativeImage } from "electron";
+import { app, BrowserWindow, shell, dialog, ipcMain, clipboard,Menu,Tray,nativeImage,net } from "electron";
 import {readDesktopClipboardResources} from '../vendor/moki/desktop/clipboard-resources.js';
 import {buildMediaContextMenuTemplate} from '../vendor/moki/desktop/media-context-menu.js';
 import {buildAttachmentContextMenuTemplate} from '../vendor/moki/desktop/attachment-context-menu.js';
@@ -12,6 +12,8 @@ import {WhiteboardStore} from '../server/store.js';
 import {ResourceCache,legacyResourcePath} from '../server/resource-cache.js';
 import {DEVELOPER_CONTACT_URL,isAllowedExternalUrl} from '../shared/app-metadata.js';
 import {APP_VERSION} from '../server/app-metadata.js';
+import {APP_RELEASE_TAG} from '../shared/app-release.js';
+import {DesktopUpdates} from './updates.js';
 import {desktopCachePaths} from './runtime-paths.js';
 import {DesktopSettings,AUTOSTART_ARGUMENT} from './settings.js';
 import {DesktopLifecycle} from './lifecycle.js';
@@ -40,6 +42,7 @@ function revealWindow(win:BrowserWindow){if(win.isDestroyed())return;if(win.isMi
 async function cancelWindowClose(win:BrowserWindow){if(!win.isDestroyed())await win.webContents.executeJavaScript('window.mokiCancelClose?.()').catch(()=>{});}
 
 let desktopSettings:DesktopSettings|undefined;
+let updates:DesktopUpdates|undefined;
 let tray:Tray|undefined;
 let openingWindow:Promise<void>|undefined;
 const lifecycle=new DesktopLifecycle({
@@ -48,7 +51,7 @@ const lifecycle=new DesktopLifecycle({
  prepare:async()=>{
   const all=liveWindows();try{await windowSaves.prepareAll(all);}catch(error){await Promise.allSettled(all.map(cancelWindowClose));const failed=(error as {windows?:BrowserWindow[]}).windows?.[0];if(failed)revealWindow(failed);throw error;}
  },
- stop:async()=>{try{await server?.close();}finally{store?.close();tray?.destroy();}},
+ stop:async()=>{try{await updates?.dispose();await server?.close();}finally{store?.close();tray?.destroy();}},
  exit:()=>app.exit(Number(process.exitCode??0)),
  failed:error=>{console.error('退出前保存失败：',error);if(process.env.MOKI_WHITEBOARD_SMOKE==='1'){app.exit(1);return;}void openWindow();dialog.showErrorBox('白板尚未保存，未退出',String(error));}
 });
@@ -68,6 +71,10 @@ function installDesktopBridge(){
  handle('moki:desktop-get',()=>desktopSettings!.get());
  handle('moki:desktop-set',(input:unknown)=>desktopSettings!.set(input));
  handle('moki:desktop-quit',()=>{setImmediate(()=>void lifecycle.quit());});
+ handle('moki:update-get',()=>updates!.get());
+ handle('moki:update-check',()=>updates!.check());
+ handle('moki:update-download',()=>updates!.download());
+ handle('moki:update-reveal',()=>updates!.reveal());
  handle('moki:cache-get',()=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');return resourceCache.info();});
  handle('moki:cache-set',(path:unknown)=>{if(!resourceCache)throw new Error('当前连接不是独立客户端本地服务');if(path!==null&&typeof path!=='string')throw new Error('素材路径无效');return resourceCache.schedule(path);});
  handleWindow('moki:select-file',async win=>{const result=await dialog.showOpenDialog(win,{properties:['openFile']});return result.canceled?null:result.filePaths[0]??null;});
@@ -260,7 +267,9 @@ async function createWindow(show:boolean,path='/') {
         if(!Array.from(document.querySelectorAll('button')).some(button=>button.textContent==='复制 Agent 接入说明'))throw new Error('Agent onboarding action missing');
         document.querySelector('[aria-label="关闭设置"]').click();
         await wait(()=>!document.querySelector('.native-settings-modal'));
-        return {tabs,about:true,appVersion:${JSON.stringify(APP_VERSION)},themeChanged:true,mcpConfig:true,agentInstructions:true,desktopSettings:true,cacheBridge:true,cachePath:initial.path,pendingPath:scheduled.pendingPath,activePathUnchanged:initial.path===scheduled.path};
+        const updateState=await window.mokiDesktop.clientUpdates.get();
+        if(updateState.currentTag!==${JSON.stringify(APP_RELEASE_TAG)})throw new Error('Update package revision mismatch');
+        return {tabs,about:true,appVersion:${JSON.stringify(APP_VERSION)},releaseTag:updateState.currentTag,updaterBridge:true,themeChanged:true,mcpConfig:true,agentInstructions:true,desktopSettings:true,cacheBridge:true,cachePath:initial.path,pendingPath:scheduled.pendingPath,activePathUnchanged:initial.path===scheduled.path};
       })()`);
       if(settingsSmoke?.tabs!==4||settingsSmoke?.activePathUnchanged!==true)throw new Error('Unified settings smoke failed');
     }
@@ -286,12 +295,19 @@ async function createWindow(show:boolean,path='/') {
 
 if(primary)app.whenReady().then(async () => {
   desktopSettings=new DesktopSettings(join(app.getPath('userData'),'desktop-settings.json'),app,process.platform,app.isPackaged,process.execPath);
+  updates=new DesktopUpdates({currentTag:APP_RELEASE_TAG,platform:process.platform,arch:process.arch,enabled:app.isPackaged,
+   fetch:(url,init)=>net.fetch(url,init),
+   chooseFile:async name=>{const options={title:'下载 MOKI 白板更新',defaultPath:join(app.getPath('downloads'),name)};const win=activeWindow&&!activeWindow.isDestroyed()?activeWindow:undefined;const result=win?await dialog.showSaveDialog(win,options):await dialog.showSaveDialog(options);return result.canceled?null:result.filePath??null;},
+   reveal:path=>shell.showItemInFolder(path),
+   changed:state=>{for(const win of liveWindows())win.webContents.send('moki:update-changed',state);},
+  });
   installDesktopBridge();
   createTray();
   if(process.platform==='darwin')Menu.setApplicationMenu(Menu.buildFromTemplate([{role:'appMenu'},{role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'}]));
   let login=process.argv.includes(AUTOSTART_ARGUMENT);
   if(process.platform==='darwin'&&app.isPackaged){try{login||=app.getLoginItemSettings().wasOpenedAtLogin;}catch(error){console.warn('无法读取本次登录启动状态：',String(error));}}
   await openWindow(!login||!desktopSettings.trayAvailable||pendingWhiteboards.pending);
+  if(process.env.MOKI_WHITEBOARD_SMOKE!=='1')updates.start();
   app.on('activate',()=>{void openWindow().catch(showWindowError);});
 }).catch(async error=>{console.error(error);if(process.env.MOKI_WHITEBOARD_SMOKE!=='1')dialog.showErrorBox('MOKI 白板启动失败',String(error));await server?.close();store?.close();app.exit(1);});
 app.on("window-all-closed", () => { if (!lifecycle.exiting)void lifecycle.quit(); });

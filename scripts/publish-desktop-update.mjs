@@ -11,6 +11,8 @@ const exec=promisify(execFile),root=resolve(process.argv[2]),repo=process.env.GI
 assert.equal(repo,'JKZeng-cell/moki-whiteboard');
 const version=JSON.parse(await readFile('package.json','utf8')).version;
 const tag=process.env.RELEASE_TAG,publicationCommit=process.env.GITHUB_SHA;
+const releaseMetadata=await readFile('src/shared/app-release.ts','utf8');
+assert.ok(releaseMetadata.includes(`APP_RELEASE_TAG='${tag}'`),'Packaged updater tag must match the published revision');
 assert.match(tag??'',new RegExp(`^v${version.replaceAll('.','\\.')}-r[1-9][0-9]*$`));
 const notesPath=`docs/releases/${tag}-notes.md`;
 const releaseTitle=(await readFile(notesPath,'utf8')).split(/\r?\n/u)[0].replace(/^#\s*/u,'').trim();
@@ -38,6 +40,7 @@ for(const platform of ['windows','macos']){
  const local=await read(platform,'local-verification.json'),opening=await read(platform,'file-opening-verification.json'),source=await read(platform,'source-verification.json');
  assert.equal(local.packaged,true);assert.equal(local.native,true);assert.equal(local.tools,16);assert.equal(local.protocolErrors,0);assert.equal(local.stdioReadWrite,true);assert.equal(local.office.viewerStatus,200);
  assert.equal(local.settingsSmoke.appVersion,version);assert.equal(local.settingsSmoke.tabs,4);assert.equal(local.settingsSmoke.desktopSettings,true);assert.equal(local.settingsSmoke.agentInstructions,true);
+ assert.equal(local.settingsSmoke.updaterBridge,true);assert.equal(local.settingsSmoke.releaseTag,tag);
  for(const key of ['trayCreated','closeToTray','backgroundService','restoreSameWindow'])assert.equal(local.lifecycleSmoke[key],true);
  assert.equal(opening.packaged,true);for(const key of ['startup','runtimeNotification','buttonWriteBack','shortcutWriteBack','reopenSameBoard','mappedFolderRestored','multipleWindows'])assert.equal(opening.fileOpenSmoke[key],true);
  assert.equal(source.passed,true);assert.equal(source.compiledSourceIdentical,true);assert.equal(source.sourceCommit,sourceCommit);assert.equal(source.version,version);assert.ok(source.sourceFiles>0);

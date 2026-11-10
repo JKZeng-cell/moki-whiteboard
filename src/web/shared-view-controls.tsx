@@ -1,12 +1,13 @@
 import {useLayoutEffect,useRef,useState} from 'react';
-import {Copy,Hand,MousePointer2,FolderClosed,FolderOpen,X} from 'lucide-react';
+import {Copy,Download,Hand,MousePointer2,FolderClosed,FolderOpen,X} from 'lucide-react';
 
 export type SharedViewAction={label:string;run:()=>void;disabled?:boolean;shortcut?:string};
-export function SharedViewToolbar({count,pan,setPan,copy,groupToggle,clear}:{count:number;pan:boolean;setPan:(value:boolean)=>void;copy:()=>void;groupToggle?:{collapsed:boolean;run:()=>void}|undefined;clear:()=>void}){
+export function SharedViewToolbar({count,pan,setPan,copy,download,downloading=false,groupToggle,clear}:{count:number;pan:boolean;setPan:(value:boolean)=>void;copy:()=>void;download?:(()=>void)|undefined;downloading?:boolean;groupToggle?:{collapsed:boolean;run:()=>void}|undefined;clear:()=>void}){
  return <div data-whiteboard-control-surface className="shared-view-toolbar" role="toolbar" aria-label="共享白板查看工具">
   <button aria-label="选择内容" title="选择内容 · 拖动框选" aria-pressed={!pan} onClick={()=>setPan(false)}><MousePointer2 size={17}/></button>
   <button aria-label="拖动画布" title="拖动画布 · 也可按住空格拖动" aria-pressed={pan} onClick={()=>setPan(true)}><Hand size={17}/></button>
   {count>0?<><span className="shared-selection-count" aria-live="polite">已选 {count} 项</span><button onClick={copy} title="复制内容（Ctrl / ⌘ + C）" aria-label="复制选中内容"><Copy size={16}/><span>复制</span></button>
+  {download?<button onClick={download} disabled={downloading} aria-busy={downloading} title="下载选中的原始素材" aria-label="下载选中素材"><Download size={16}/><span>{downloading?'下载中…':'下载'}</span></button>:null}
   {groupToggle?<button aria-label={groupToggle.collapsed?'展开编组':'收起编组'} title="仅影响自己的视窗" onClick={groupToggle.run}>{groupToggle.collapsed?<FolderOpen size={17}/>:<FolderClosed size={17}/>}</button>:null}
   <button aria-label="取消选择" onClick={clear}><X size={16}/></button></>:null}
  </div>;

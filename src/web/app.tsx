@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {useTheme} from './use-theme.js';
+import {DesktopUpdateNotice} from './desktop-updates.js';
 import {useLanSharingState} from './lan-sharing-client.js';
 import {BoardShareDialog} from './board-share-dialog.js';
 import {useWhiteboardFiles} from './use-whiteboard-files.js';
@@ -57,6 +58,7 @@ export function App(){
  useEffect(()=>{if(!id)return;let last:number|undefined,attempted:number|undefined,retryAt=0,pending=false,disposed=false;const timer=setInterval(()=>{if(pending||version.current===undefined||version.current===last||attempted===version.current&&Date.now()<retryAt)return;const observed=version.current;attempted=observed;pending=true;void captureThumbnail(id).then(saved=>{if(saved&&!disposed)last=observed;}).catch(e=>{if(!disposed)setError(String(e));}).finally(()=>{pending=false;retryAt=Date.now()+30000;});},1300);return()=>{disposed=true;clearInterval(timer);};},[id,dark]);
  const back=async()=>{try{await fileDocument.save(false,true);}catch(e){setError('保存失败，尚未离开白板：'+String(e));return;}try{if(id)await captureThumbnail(id);}catch(e){setError('白板内容已保存，截图将在下次打开时重试：'+String(e));}navigate();};
  return <>
+ <DesktopUpdateNotice/>
  {id?<NativeControlsContext.Provider value={{back:()=>void back(),settings:()=>{setSettingsTab('general');setSettings(true);},...(desktopWindows?{newWindow:()=>void openNewWindow(id,true),openingWindow:detaching}:{}),...(sharing?.enabled?{share:()=>setShareBoard({id,title:items.find(item=>item.id===id)?.title??'当前白板'})}:{})}}><WhiteboardPage key={`${id}:${openRevision}`} boardTitle={items.find(item=>item.id===id)?.title ?? '白板名称加载中…'} onSave={()=>fileDocument.save()} onSaveAs={fileDocument.saveAs} fileStatus={fileDocument.status} onCheckpointReady={value=>{checkpoint.current=value;}}/></NativeControlsContext.Provider>:
  <BoardManager items={items} open={next=>void openCurrent(next)} {...(desktopWindows?{onOpenWindow:(next:string)=>void openNewWindow(next)}:{})} refresh={refresh} onShare={item=>setShareBoard(item)} controls={<>{whiteboardFiles.controls}<button className="native-app-control" aria-label="设置" title="设置" onClick={()=>{setSettingsTab('general');setSettings(true);}}><Settings size={18}/></button></>}/>}
  {preparingClose||detaching?<div className="whiteboard-window-progress" role="status"><span>{preparingClose?'正在保存此窗口的白板…':'正在新窗口打开白板…'}</span></div>:null}

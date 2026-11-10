@@ -8,6 +8,8 @@ html[data-color-scheme=dark] .board-more-menu{background:#242a3c;border-color:#3
 .shared-view-toolbar button{display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;height:34px;min-width:34px;padding:0 8px;border:0;border-radius:10px;font-size:12px;background:transparent;color:inherit}
 .shared-view-toolbar button:hover,.shared-view-toolbar button:focus-visible{background:#eeecfb;outline:2px solid #b1a8ee;outline-offset:-2px}
 .shared-view-toolbar button[aria-pressed=true]{background:#6256c8;color:white}
+.shared-view-toolbar button:disabled{opacity:.5;cursor:wait}
+@media(max-width:480px){.shared-view-toolbar{gap:2px;padding:4px}.shared-view-toolbar button{gap:4px;min-width:28px;padding:0 5px}.shared-selection-count{font-size:10px;padding:0 5px}}
 .shared-selection-count{font-size:11px;white-space:nowrap;border-left:1px solid #e2e4ed;padding:0 8px}
 .shared-view-context{position:absolute;z-index:65;width:min(256px,calc(100% - 16px));max-height:calc(100% - 16px);overflow-y:auto;overscroll-behavior:contain;padding:6px;color:#414862;scrollbar-width:thin}
 .shared-view-context>p{font-size:10px;color:#8b90a1;padding:7px 10px}

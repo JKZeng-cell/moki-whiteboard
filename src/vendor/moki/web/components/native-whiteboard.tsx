@@ -126,6 +126,7 @@ declare global {
     mokiDesktop?: {
       windows?:{openBoard(boardId:string,detachCurrent?:boolean):Promise<void>;focusBoard(boardId:string):Promise<boolean>};
       desktopSettings?: import('../../../../shared/desktop-settings-contract.js').DesktopSettingsBridge;
+      clientUpdates?: import('../../../../shared/client-update-contract.js').ClientUpdatesBridge;
       resourceCache?: import('../../../../shared/resource-cache-contract.js').ResourceCacheBridge;
       appearance?: {
         setColorSchemePreference(preference: "system" | "light" | "dark"): Promise<boolean>;
@@ -4007,6 +4008,51 @@ function NativeGifPlayer({ src, selected }: { src: string; selected: boolean }) 
   );
 }
 
+function NativeVideoDragSurface({ onPointerDown, onPointerMove, onPointerUp, onDoubleClick, canTogglePlayback }: {
+  onPointerDown: React.PointerEventHandler<HTMLElement>;
+  onPointerMove: React.PointerEventHandler<HTMLElement>;
+  onPointerUp: React.PointerEventHandler<HTMLElement>;
+  onDoubleClick: React.MouseEventHandler<HTMLElement>;
+  canTogglePlayback: () => boolean;
+}) {
+  const gesture = useRef<{ x: number; y: number; moved: boolean; toggle: boolean } | undefined>(undefined);
+  return <div
+    data-whiteboard-video-drag-surface
+    aria-hidden="true"
+    // Native media consumes pointer gestures even before metadata has loaded.
+    // Route the picture to the editor while leaving both rows of controls free.
+    className="absolute inset-0 bottom-[min(72px,50%)] touch-none cursor-move"
+    onPointerDown={event => {
+      gesture.current = undefined;
+      if (event.button === 2) return;
+      gesture.current = {
+        x: event.clientX, y: event.clientY, moved: false,
+        toggle: event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && canTogglePlayback(),
+      };
+      event.preventDefault();
+      onPointerDown(event);
+    }}
+    onPointerMove={event => {
+      const start = gesture.current;
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 0.001) start.moved = true;
+      onPointerMove(event);
+    }}
+    onPointerUp={event => onPointerUp(event)}
+    onPointerCancel={event => { gesture.current = undefined; onPointerUp(event); }}
+    onClick={event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const start = gesture.current;
+      gesture.current = undefined;
+      if (!start?.toggle || start.moved) return;
+      const video = event.currentTarget.parentElement?.querySelector('video');
+      if (video?.paused) void video.play().catch(() => undefined);
+      else video?.pause();
+    }}
+    onDoubleClick={onDoubleClick}
+  />;
+}
+
 export function NativeWhiteboard({
   store,
   viewStateKey,
@@ -4101,7 +4147,6 @@ export function NativeWhiteboard({
   const selectedPaintMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const selectedPaintMenuId = useId();
   const pageMenuRef = useRef<HTMLDivElement | null>(null);
-  const pageMenuSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pageRenameCancelledRef = useRef(false);
   const draggedPageIdRef = useRef<string | undefined>(undefined);
   const draggedPageGroupIdRef = useRef<string | undefined>(undefined);
@@ -4588,13 +4633,6 @@ export function NativeWhiteboard({
     window.addEventListener("pointerdown", closePageMenu);
     return () => window.removeEventListener("pointerdown", closePageMenu);
   }, [pageMenuOpen]);
-
-  useEffect(() => () => {
-    if (pageMenuSelectionTimerRef.current) {
-      clearTimeout(pageMenuSelectionTimerRef.current);
-      pageMenuSelectionTimerRef.current = undefined;
-    }
-  }, []);
 
   useEffect(() => {
     if (!selectedPaintMenuOpen) return;
@@ -5432,7 +5470,7 @@ export function NativeWhiteboard({
   }, [editor, finishPenDraft, scheduleDraw]);
 
   const beginDirectResize = useCallback((
-    event: React.PointerEvent<HTMLCanvasElement>,
+    event: React.PointerEvent<HTMLElement>,
     point: NativePoint,
     selectedShapes: NativeWhiteboardShape[],
   ): boolean => {
@@ -5481,7 +5519,7 @@ export function NativeWhiteboard({
     return true;
   }, []);
 
-  const pointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
     if (textDraftRef.current) commitTextDraft();
     const point = eventPoint(event);
     const tool = readOnly?'hand':editor.getCurrentTool();
@@ -5768,7 +5806,7 @@ export function NativeWhiteboard({
     scheduleDraw();
   }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, readOnly, scheduleDraw,selectReadonly,onReadonlyGroupToggle]);
 
-  const pointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
     const press=readonlyLinkPressRef.current;
     if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>=4)press.moved=true;
     const action = actionRef.current;
@@ -6052,7 +6090,7 @@ export function NativeWhiteboard({
     action.points.push(point); draftRef.current = action.points; scheduleDraw();
   }, [editor, eventPoint, hitArrowAtPoint, hitShape, readOnly, refresh, scheduleDraw, store]);
 
-  const pointerUp = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerUp = useCallback((event: React.PointerEvent<HTMLElement>) => {
     if(event.type==='pointercancel'){readonlyLinkPressRef.current=undefined;if(readOnly){actionRef.current=undefined;marqueeRef.current=undefined;delete event.currentTarget.dataset.panning;event.currentTarget.style.removeProperty('cursor');scheduleDraw();return;}}
     delete event.currentTarget.dataset.panning;
     event.currentTarget.style.removeProperty("cursor");
@@ -6367,7 +6405,7 @@ export function NativeWhiteboard({
     const name = pageName(store.snapshot, page.id);
     const editedAt = formatPageEditedAt(page);
     const isCurrent = page.id === currentPageId;
-    if(readOnly)return <li key={page.id} className={`relative flex min-h-10 items-center gap-1 rounded-[16px] border px-2.5 transition ${isCurrent?'border-[#cbc7ef] bg-[#f0efff]':'border-[#e8e9f0] bg-white'}`}><button type="button" aria-label={`切换到页面 ${name}`} onClick={()=>{editor.setCurrentPage(page.id);setPageMenuOpen(false);setPageQuery('');}} className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"><span className="block truncate text-xs font-bold text-[#30364d]">{name}</span><span className="mt-0.5 block truncate text-[0.625rem] font-semibold text-[#989dae]">{editedAt}</span></button></li>;
+    if(readOnly)return <li key={page.id} className={`relative flex min-h-10 items-center gap-1 rounded-[16px] border px-2.5 transition ${isCurrent?'border-[#cbc7ef] bg-[#f0efff]':'border-[#e8e9f0] bg-white'}`}><button type="button" aria-label={`切换到页面 ${name}`} aria-current={isCurrent ? "page" : undefined} onClick={()=>editor.setCurrentPage(page.id)} className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"><span className="block truncate text-xs font-bold text-[#30364d]">{name}</span><span className="mt-0.5 block truncate text-[0.625rem] font-semibold text-[#989dae]">{editedAt}</span></button></li>;
     const isRenaming = page.id === renamingPageId;
     const isDropTarget = pageDropTarget?.type === "page" &&
       pageDropTarget.id === page.id && draggedPageId !== page.id;
@@ -6439,29 +6477,11 @@ export function NativeWhiteboard({
               type="button"
               draggable={false}
               aria-label={`切换到页面 ${name}`}
-              onClick={(event) => {
-                editor.setCurrentPage(page.id);
-                if (event.detail === 0) {
-                  setPageMenuOpen(false);
-                  setPageQuery("");
-                  return;
-                }
-                if (event.detail === 1) {
-                  if (pageMenuSelectionTimerRef.current) clearTimeout(pageMenuSelectionTimerRef.current);
-                  pageMenuSelectionTimerRef.current = setTimeout(() => {
-                    setPageMenuOpen(false);
-                    setPageQuery("");
-                    pageMenuSelectionTimerRef.current = undefined;
-                  }, 220);
-                }
-              }}
+              aria-current={isCurrent ? 'page' : undefined}
+              onClick={() => editor.setCurrentPage(page.id)}
               onDoubleClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                if (pageMenuSelectionTimerRef.current) {
-                  clearTimeout(pageMenuSelectionTimerRef.current);
-                  pageMenuSelectionTimerRef.current = undefined;
-                }
                 startPageRename(page.id);
               }}
               className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"
@@ -7332,7 +7352,7 @@ export function NativeWhiteboard({
           preload: "metadata" as const,
           controls: readOnly || selected,
           className: "size-full",
-          onDoubleClick: (event: React.MouseEvent<HTMLMediaElement>) => {
+          onDoubleClick: (event: React.MouseEvent<HTMLElement>) => {
             if (!localPath) return;
             event.preventDefault();
             event.stopPropagation();
@@ -7361,6 +7381,13 @@ export function NativeWhiteboard({
             {video
               ? <video {...common} aria-label="白板视频播放器" className="size-full bg-[#171b2a] object-contain" />
               : <audio {...common} aria-label="白板音频播放器" className="h-full w-full px-4" />}
+            {video && !readOnly && <NativeVideoDragSurface
+              onPointerDown={pointerDown}
+              onPointerMove={pointerMove}
+              onPointerUp={pointerUp}
+              onDoubleClick={common.onDoubleClick}
+              canTogglePlayback={() => editor.getCurrentTool() === 'select'}
+            />}
           </div>
         );
       })}

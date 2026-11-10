@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -168,6 +168,7 @@ describe('read-only shared whiteboard controls',()=>{
   fireEvent.click(screen.getByRole('button',{name:'收起页面分组 参考素材'}));expect(screen.queryByRole('button',{name:'切换到页面 素材页'})).toBeNull();
   fireEvent.change(screen.getByRole('searchbox',{name:'搜索白板页面'}),{target:{value:'素材'}});expect(screen.getByRole('button',{name:'切换到页面 素材页'})).toBeDefined();
   fireEvent.change(screen.getByRole('searchbox',{name:'搜索白板页面'}),{target:{value:''}});fireEvent.click(screen.getByRole('button',{name:'切换到页面 展示页'}));expect(seed.getCurrentPageId()).toBe(second);
+  expect(screen.getByRole('button',{name:'打开白板页面菜单'})).toHaveAttribute('aria-expanded','true');
   fireEvent.paste(window,{clipboardData:{types:['text/plain'],getData:()=> 'https://example.com'}});expect(store.snapshot.document).toEqual(before);expect(screen.getByRole('button',{name:'重置画布'})).toBeDefined();
  });
  it('exposes playable video controls without selecting or mutating its shape',()=>{
@@ -177,6 +178,105 @@ describe('read-only shared whiteboard controls',()=>{
   const before=structuredClone(store.snapshot.document);const {container}=render(createElement(NativeWhiteboard,{store,readOnly:true}));const video=container.querySelector('video')!;
   expect(video.controls).toBe(true);expect(video.parentElement).toHaveClass('pointer-events-auto','rounded-none');expect(store.snapshot.document).toEqual(before);
  });
+});
+
+describe("newly inserted video dragging", () => {
+  async function setup() {
+    mockCanvas();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({
+      src: "/api/whiteboard/assets/drag-video", mimeType: "video/mp4", fileSize: 5,
+    }) }));
+    const store = new NativeWhiteboardStore();
+    let editor!: NativeWhiteboardEditor;
+    const view = render(createElement(NativeWhiteboard, { store, onMount: value => { editor = value; } }));
+    await act(async () => {
+      editor.resetView();
+      await editor.putExternalContent({ files: [new File(["video"], "drag.mp4", { type: "video/mp4" })], point: { x: 420, y: 280 } });
+    });
+    const id = editor.getSelectedShapeIds()[0]!;
+    const video = view.container.querySelector("video")!;
+    const surface = view.container.querySelector<HTMLElement>("[data-whiteboard-video-drag-surface]")!;
+    const pointer = (type: string, x: number, y: number, button = 0) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button });
+      Object.defineProperty(event, "pointerId", { value: 19 });
+      fireEvent(surface, event);
+    };
+    const drag = (x: number, y: number, dx: number, dy: number) => {
+      pointer("pointerdown", x, y);
+      pointer("pointermove", x + dx, y + dy);
+      pointer("pointerup", x + dx, y + dy);
+    };
+    return { ...view, store, editor, id, video, surface, pointer, drag };
+  }
+
+  it("moves the auto-selected video before metadata arrives and keeps dragging after load or failure", async () => {
+    const { editor, id, video, surface, drag } = await setup();
+    expect(video.readyState).toBe(0);
+    expect(editor.getShape(id)).toMatchObject({ x: 100, y: 100 });
+    drag(220, 200, 100, 55);
+    expect(editor.getShape(id)).toMatchObject({ x: 200, y: 155 });
+    expect(surface.setPointerCapture).toHaveBeenCalledWith(19);
+    fireEvent.loadedMetadata(video);
+    drag(320, 255, -50, 20);
+    expect(editor.getShape(id)).toMatchObject({ x: 150, y: 175 });
+    fireEvent.error(video);
+    drag(270, 275, 30, -15);
+    expect(editor.getShape(id)).toMatchObject({ x: 180, y: 160 });
+    expect(video.isConnected).toBe(true);
+    expect(video.controls).toBe(true);
+    expect(video.parentElement).toHaveClass("rounded-none");
+    expect(editor.undo()).toBe(true);
+    expect(editor.getShape(id)).toMatchObject({ x: 150, y: 175 });
+    expect(editor.redo()).toBe(true);
+    expect(editor.getShape(id)).toMatchObject({ x: 180, y: 160 });
+  });
+
+  it("scales video dragging with the camera", async () => {
+    const { container, editor, id, drag } = await setup();
+    const canvas = container.querySelector(".native-whiteboard-canvas")!;
+    await waitFor(() => expect(editor.getViewportPageBounds().w).toBeCloseTo(800));
+    fireEvent.wheel(canvas, { clientX: 0, clientY: 0, deltaY: -200, ctrlKey: true });
+    const viewport = editor.getViewportPageBounds(), zoom = 800 / viewport.w;
+    expect(zoom).toBeGreaterThan(1);
+    drag((220 - viewport.x) * zoom, (200 - viewport.y) * zoom, 100, 50);
+    expect(editor.getShape(id)?.x).toBeCloseTo(100 + 100 / zoom);
+    expect(editor.getShape(id)?.y).toBeCloseTo(100 + 50 / zoom);
+  });
+
+  it("keeps click-to-play but does not play after dragging, cancelling, or using the hand tool", async () => {
+    const { editor, video, surface, pointer, drag } = await setup();
+    const play = vi.spyOn(video, "play").mockResolvedValue(undefined);
+    pointer("pointerdown", 220, 200); pointer("pointerup", 220, 200); fireEvent.click(surface);
+    expect(play).toHaveBeenCalledOnce();
+    play.mockClear();
+    drag(220, 200, 100, 55); fireEvent.click(surface);
+    expect(play).not.toHaveBeenCalled();
+    pointer("pointerdown", 320, 255); pointer("pointercancel", 320, 255); fireEvent.click(surface);
+    expect(play).not.toHaveBeenCalled();
+    editor.setCurrentTool("hand");
+    pointer("pointerdown", 320, 255); pointer("pointerup", 320, 255); fireEvent.click(surface);
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it("leaves native controls outside the drag surface and never adds it to read-only media", async () => {
+    const { container, store, video, surface, pointer, editor, id } = await setup();
+    const before = structuredClone(editor.getShape(id));
+    expect(surface).toHaveClass("bottom-[min(72px,50%)]");
+    const event = new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 180, clientY: 440 });
+    Object.defineProperty(event, "pointerId", { value: 21 });
+    fireEvent(video, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(editor.getShape(id)).toEqual(before);
+    pointer("pointerdown", 220, 200, 2);
+    expect(surface.setPointerCapture).not.toHaveBeenCalled();
+    fireEvent.contextMenu(surface, { clientX: 220, clientY: 200 });
+    expect(screen.getByRole("menuitem", { name: "复制" })).toBeDefined();
+    cleanup();
+    render(createElement(NativeWhiteboard, { store, readOnly: true }));
+    expect(document.querySelector("[data-whiteboard-video-drag-surface]")).toBeNull();
+    expect(document.querySelector("video")?.controls).toBe(true);
+    expect(container.isConnected).toBe(false);
+  });
 });
 
 describe("native whiteboard geometry", () => {
@@ -2119,6 +2219,10 @@ describe("native whiteboard history", () => {
     fireEvent.click(screen.getByRole("button", { name: "打开白板页面菜单" }));
     const pageButton = screen.getByRole("button", { name: "切换到页面 页面 1" });
     fireEvent.click(pageButton, { detail: 1 });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 260)); });
+    expect(screen.getByRole("dialog", { name: "白板页面管理" })).toBeInTheDocument();
+    fireEvent.click(pageButton, { detail: 0 });
+    expect(screen.getByRole("button", { name: "打开白板页面菜单" })).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(pageButton, { detail: 2 });
     fireEvent.doubleClick(pageButton, { detail: 2 });
 
@@ -2176,6 +2280,10 @@ describe("native whiteboard history", () => {
     fireEvent.change(search, { target: { value: "执行" } });
     expect(screen.getByRole("button", { name: "切换到页面 执行页面" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "切换到页面 概念方案" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "切换到页面 执行页面" }), { detail: 1 });
+    expect(editor!.getCurrentPage().name).toBe("执行页面");
+    expect(search).toHaveValue("执行");
+    expect(screen.getByRole("button", { name: "打开白板页面菜单" })).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.change(search, { target: { value: "" } });
     const source = screen.getByRole("button", { name: "切换到页面 交付页面" }).closest("li")!;

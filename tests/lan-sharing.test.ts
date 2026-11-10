@@ -49,7 +49,12 @@ describe('LAN read-only sharing',()=>{
   expect(text).not.toContain(root);expect(text).not.toContain('localPath');expect(value.snapshot.document.store['asset:own'].props.src).toContain('/share-api/'+token+'/asset/');
   expect(value.attachments).toEqual(expect.arrayContaining([expect.objectContaining({id:'shape:video',name:'portable.mp4',pageId:pages(board.snapshot)[0]!.id,kind:'media',mediaKind:'video',mimeType:'video/mp4',previewUrl:value.snapshot.document.store['asset:own'].props.src}),expect.objectContaining({id:'shape:file',kind:'resource',mimeType:'text/plain',previewUrl:'/share-api/'+token+'/file/shape%3Afile?preview=1'})]));
   const asset=await fetch(base+value.snapshot.document.store['asset:own'].props.src,{headers:{range:'bytes=2-5'}});expect(asset.status).toBe(206);expect(await asset.text()).toBe('2345');
+  const original=await fetch(base+value.snapshot.document.store['asset:own'].props.src+'?download=1');
+  expect(original.headers.get('content-disposition')).toBe("attachment; filename*=UTF-8''video.mp4");expect(await original.text()).toBe('0123456789');
+  const downloadHead=await fetch(base+value.snapshot.document.store['asset:own'].props.src+'?download=1',{method:'HEAD'});
+  expect(downloadHead.status).toBe(200);expect(downloadHead.headers.get('content-length')).toBe('10');
   expect((await fetch(base+'/share-api/'+token+'/asset/'+privateAsset.src.split('/').at(-1))).status).toBe(404);
+  expect((await fetch(base+'/share-api/'+token+'/asset/'+privateAsset.src.split('/').at(-1)+'?download=1')).status).toBe(404);
   const download=await fetch(base+'/share-api/'+token+'/file/shape%3Afile');expect(await download.text()).toBe('shared file');expect(download.headers.get('content-disposition')).toContain('attachment');
   const preview=await fetch(base+'/share-api/'+token+'/file/shape%3Afile?preview=1');expect(preview.headers.get('content-type')).toContain('text/plain');expect(preview.headers.get('content-disposition')).toContain('inline');expect(await preview.text()).toBe('shared file');
   const suffix=await fetch(base+value.attachments[0].previewUrl,{headers:{range:'bytes=-3'}});expect(suffix.status).toBe(206);expect(await suffix.text()).toBe('789');

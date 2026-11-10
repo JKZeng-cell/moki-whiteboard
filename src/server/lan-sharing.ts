@@ -133,7 +133,8 @@ export class LanSharing {
   shared.get('/share-api/:token/asset/:id',async(request,reply)=>{
    const {token,id}=request.params as {token:string;id:string};const board=this.board(token);
    if(!Object.values(board.snapshot.document.store).some(record=>record.typeName==='asset'&&sourceAssetId((('props' in record?record.props:undefined) as Record<string,unknown>|undefined)?.src)===id))throw denied();
-   const row=this.store.db.prepare('SELECT content,mime_type,byte_size FROM whiteboard_assets WHERE id=?').get(id);if(!row)throw denied();
+   const row=this.store.db.prepare('SELECT content,mime_type,byte_size,file_name FROM whiteboard_assets WHERE id=?').get(id);if(!row)throw denied();
+   if((request.query as {download?:string}).download==='1')reply.header('content-disposition',`attachment; filename*=UTF-8''${encodeURIComponent(String(row.file_name??'白板附件'))}`);
    const bytes=new ResourceCache(this.store).readAsset(id,row.content as Uint8Array,Number(row.byte_size));reply.type(String(row.mime_type)).header('content-security-policy',"sandbox; default-src 'none'").header('accept-ranges','bytes');
    if(request.headers.range){const range=byteRange(request.headers.range,bytes.length);if(!range)return reply.code(416).header('content-range',`bytes */${bytes.length}`).send();return reply.code(206).header('content-range',`bytes ${range.start}-${range.end}/${bytes.length}`).send(bytes.subarray(range.start,range.end+1));}
    return reply.send(bytes);

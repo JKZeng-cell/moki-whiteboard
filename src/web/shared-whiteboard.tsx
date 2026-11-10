@@ -14,6 +14,7 @@ import {applySharedGroupView,sharedGroupId} from './shared-view-state.js';
 import {buildSharedClipboard,buildSharedImageClipboard,copySharedClipboardFallback,inlineSharedImages,writeSharedClipboardEvent,type SharedClipboard} from './shared-clipboard.js';
 import {isNativeShape} from '../vendor/moki/whiteboard/native-whiteboard-model.js';
 import {SharedViewToolbar,SharedViewContextMenu,type SharedViewAction} from './shared-view-controls.js';
+import {selectedSharedDownloads,downloadSharedMaterials} from './shared-material-download.js';
 type SharedBoard={title:string;version:number;snapshot:WhiteboardSnapshot;attachments:SharedAttachment[];onlineCount?:number};
 const VIEW_SHORTCUTS=[{label:'选择 / 框选内容',keys:'点击 / 拖动空白处'},{label:'多选内容',keys:'Shift + 点击'},{label:'复制选中内容',keys:'Ctrl / ⌘ + C'},{label:'全选当前页',keys:'Ctrl / ⌘ + A'},{label:'拖动画布',keys:'空格 + 拖动 / 中键'},{label:'缩放画布',keys:'Ctrl / ⌘ + 滚轮'},{label:'适配当前页面',keys:'Ctrl / ⌘ + 0'},{label:'重置视图',keys:'Home'},{label:'画布全屏',keys:'F'},{label:'快捷键提示',keys:'?'},{label:'关闭弹窗 / 退出全屏',keys:'Esc'}];
 export function SharedWhiteboard({token}:{token:string}){
@@ -26,6 +27,7 @@ export function SharedWhiteboard({token}:{token:string}){
  useEffect(()=>{const hide=()=>visitor.leave(),show=()=>visitor.resume();window.addEventListener('pagehide',hide);window.addEventListener('pageshow',show);return()=>{window.removeEventListener('pagehide',hide);window.removeEventListener('pageshow',show);};},[visitor]);
  const canonical=useRef<SharedBoard|undefined>(undefined),groupViews=useRef(new Map<string,boolean>()),imageCache=useRef(new Map<string,string>()),clipboard=useRef<SharedClipboard|undefined>(undefined);
  const [selected,setSelected]=useState<string[]>([]),[pan,setPanState]=useState(false),[menu,setMenu]=useState<{x:number;y:number}>(),[notice,setNotice]=useState(''),[viewRevision,setViewRevision]=useState(0);
+ const [downloading,setDownloading]=useState(false),downloadInFlight=useRef(false);
  const closeMenu=useCallback(()=>setMenu(undefined),[]);
  const selectionChanged=useCallback((ids:string[])=>setSelected(ids),[]);
  const select=useCallback((ids:string[])=>{editor.current?.selectForViewing(ids);setSelected(editor.current?.getSelectedShapeIds()??[]);},[]);
@@ -94,8 +96,17 @@ export function SharedWhiteboard({token}:{token:string}){
  const collapsed=shapes.some(shape=>shape.type==='group-folder');
  const groupToggle=sameGroup?{collapsed,run:()=>toggleGroup(sameGroup,!collapsed)}:undefined;
  const selectedMaterial=selected.length===1?currentMaterials.find(item=>item.shapeId===selected[0]):undefined;
+ const downloadable=selectedSharedDownloads(store.snapshot as WhiteboardSnapshot,selected,board?.attachments??[],token,location.href);
+ const downloadMaterials=async()=>{
+  if(downloadInFlight.current||!downloadable.length)return;
+  downloadInFlight.current=true;setDownloading(true);setExportError('');setNotice('');
+  try{const count=await downloadSharedMaterials(downloadable);setNotice(`已发起 ${count} 个素材下载`);}
+  catch(error){setExportError(error instanceof Error?error.message:String(error));}
+  finally{downloadInFlight.current=false;setDownloading(false);}
+ };
  const contextActions:SharedViewAction[]=[
   ...(selected.length?[{label:'复制选中内容',run:copy,shortcut:'Ctrl / ⌘ + C'},{label:'复制为图片',run:()=>void copyImage()},{label:'下载选中内容图片',run:()=>void downloadSelection()},
+   ...(downloadable.length?[{label:'下载选中素材',run:()=>void downloadMaterials(),disabled:downloading}]:[]),
    ...(selectedMaterial?.previewUrl?[{label:'预览内容',run:()=>setPreview(selectedMaterial)}]:[]),
    ...(selectedMaterial?.openUrl?[{label:selectedMaterial.kind==='link'?'打开链接':'打开 / 下载附件',run:()=>open(selectedMaterial)}]:[]),
    ...(groupToggle?[{label:collapsed?'展开编组（仅自己）':'收起编组（仅自己）',run:groupToggle.run}]:[]),
@@ -108,7 +119,7 @@ export function SharedWhiteboard({token}:{token:string}){
  const viewButton='grid size-9 place-items-center rounded-xl border border-[#e2e4ed] bg-white/95 text-[#30364d] shadow-sm transition hover:bg-[#f0efff]';
  return <main className="moki-native-page shared-whiteboard-shell"><WorkbenchPageHeader eyebrow="MOKI CANVAS" title={board?.title??'MOKI 白板共享'} description="局域网共享 · 仅供查看" actions={<>{board?<span className="shared-online-badge" title="按浏览器去重；同一浏览器多标签页合并。异常断线最多 75 秒后移出。" aria-label={online===undefined?'在线人数统计中':'当前在线 '+online+' 人'}><UsersRound size={14}/><span>在线 {online??'…'} 人</span></span>:null}<span className="shared-readonly-badge"><Eye size={14}/>只读查看</span><button className="native-app-control" aria-label="切换外观" onClick={()=>setMode(dark?'light':'dark')}>{dark?<Sun size={16}/>:<Moon size={16}/>}</button></>}/>
  {error?<section role="alert" className="shared-unavailable">{error}</section>:board?<div className={'whiteboard-canvas-frame whiteboard-canvas shared-canvas relative min-h-0 flex-1'+(fullscreen?' shared-canvas-fullscreen':'')}><NativeWhiteboard store={store} readOnly viewStateKey={'share:'+token} onMount={mount} onReadonlySelectionChange={selectionChanged} onReadonlyGroupToggle={toggleGroup} onReadonlyContextMenu={setMenu} onReadonlyShapeOpen={id=>{const record=store.snapshot.document.store[id];if(record?.typeName==='shape'&&record.type==='link'){const props=record.props as Record<string,unknown>;open({shapeId:id,name:String(props.title??'链接'),kind:'link',openUrl:String(props.url??'')});return;}const material=currentMaterials.find(item=>item.shapeId===id);if(material?.previewUrl)setPreview(material);else if(material)open(material);}}/>
- <SharedViewToolbar count={selected.length} pan={pan} setPan={setPan} copy={copy} groupToggle={groupToggle} clear={()=>select([])}/>
+ <SharedViewToolbar count={selected.length} pan={pan} setPan={setPan} copy={copy} download={downloadable.length?()=>void downloadMaterials():undefined} downloading={downloading} groupToggle={groupToggle} clear={()=>select([])}/>
  {menu?<SharedViewContextMenu point={menu} actions={contextActions} close={closeMenu}/>:null}
  {notice?<p role="status" className="shared-copy-notice">{notice}</p>:null}
  <WhiteboardMaterialsPanel materialPanelOpen={materials} setMaterialPanelOpen={setMaterials} currentMaterials={currentMaterials} filteredMaterials={filtered} materialQuery={query} setMaterialQuery={setQuery} locateMaterial={locate} setPreviewMaterial={showPreview} openMaterial={open} canOpenMaterial={material=>Boolean(material.openUrl)}/>
