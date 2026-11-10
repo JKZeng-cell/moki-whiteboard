@@ -1,0 +1,110 @@
+{
+  "repository": "JKZeng-cell/moki-whiteboard",
+  "tag": "v0.1.8-r8",
+  "version": "0.1.8",
+  "sourceCommit": "42d534f889230423d8f4ec3f8478392e233cf592",
+  "publicationCommit": "42d534f889230423d8f4ec3f8478392e233cf592",
+  "nativeBuildRun": 42753768489,
+  "nativeJobs": {
+    "macos": 129623255615,
+    "windows": 129623255996
+  },
+  "publicationRun": 42753768489,
+  "releaseId": 439939426,
+  "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/tag/v0.1.8-r8",
+  "nativeChecks": {
+    "windows": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "multipleBoardWindows": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 107
+    },
+    "macos": {
+      "packaged": true,
+      "mcpTools": 16,
+      "protocolErrors": 0,
+      "officeViewer": true,
+      "settings": true,
+      "trayLifecycle": true,
+      "originalFileSaveAndReopen": true,
+      "multipleBoardWindows": true,
+      "compiledSourceIdentical": true,
+      "sourceFiles": 107
+    }
+  },
+  "signing": {
+    "windows": "unsigned",
+    "macOS": "ad-hoc",
+    "developerIDSigned": false,
+    "notarized": false
+  },
+  "publicDownloadsVerified": true,
+  "previousAssetsUnchanged": true,
+  "updater": {
+    "source": "GitHub stable releases",
+    "policy": "automatic check, click to download, verify SHA-256, manual install",
+    "firstSupportedRevision": "v0.1.8-r8"
+  },
+  "files": [
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.dmg",
+      "bytes": 253423601,
+      "sha256": "48fd747c70acc4dd76dba88baf34142fc37bd892d9cc27c1d73e9b6c4619c951",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/MOKI-Whiteboard-0.1.8-macOS-arm64.dmg"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-macOS-arm64.zip",
+      "bytes": 258703633,
+      "sha256": "51d8a01e99ee59341053565ac7ebf8abc2858aa9b7d17f1f90764fb04becbfd3",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/MOKI-Whiteboard-0.1.8-macOS-arm64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-0.1.8-Windows-x64.zip",
+      "bytes": 280013861,
+      "sha256": "291f59e879d7a9b6201347cbb614d92b0cc2f9c48bdd2eb387a33a35c2c35b42",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/MOKI-Whiteboard-0.1.8-Windows-x64.zip"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe",
+      "bytes": 213792087,
+      "sha256": "feb7201d70799abcafe4bb6c0030e0faf7195939e1b6fc0002d6da6fd7af4ed7",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/MOKI-Whiteboard-Setup-0.1.8-x64.exe"
+    },
+    {
+      "name": "MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap",
+      "bytes": 222787,
+      "sha256": "96880eb22d4d37bf47d386d02747da36801a91b7cd3798c6750ae7b0abdc118e",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/MOKI-Whiteboard-Setup-0.1.8-x64.exe.blockmap"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-macOS-arm64.txt",
+      "bytes": 208,
+      "sha256": "4758fb565fb93a038ec32d8654aa153a8b7bb02794f124f73dffff79a85bb4fa",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/SHA256SUMS-0.1.8-macOS-arm64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8-Windows-x64.txt",
+      "bytes": 317,
+      "sha256": "27331895dc32bf0f1a143f180f222770f037e4977c4f64498aa98de4367f852d",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/SHA256SUMS-0.1.8-Windows-x64.txt"
+    },
+    {
+      "name": "SHA256SUMS-0.1.8.txt",
+      "bytes": 525,
+      "sha256": "77af93f5d2df0260f5e866135516c96766441a6a435e630bcc361f93c77acbde",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/SHA256SUMS-0.1.8.txt"
+    },
+    {
+      "name": "verification-v0.1.8-r8.json",
+      "bytes": 2068,
+      "sha256": "a05df8e3bbad5ac9945d15d044d339f8ad58ed1cd0500f6b1375111f0b69c381",
+      "url": "https://github.com/JKZeng-cell/moki-whiteboard/releases/download/v0.1.8-r8/verification-v0.1.8-r8.json"
+    }
+  ]
+}
