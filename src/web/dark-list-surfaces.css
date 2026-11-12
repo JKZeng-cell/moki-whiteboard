@@ -1,0 +1,248 @@
+/* Standalone whiteboard chrome. Embedded whiteboards use the host's theme. */
+html[data-color-scheme="dark"]:not([data-dsh-embed]) {
+  --list-panel: #202638;
+  --list-row: #262d41;
+  --list-inset: #191e2e;
+  --list-hover: #303953;
+  --list-selected: #363057;
+  --list-border: #414a64;
+  --list-active-border: #8275c5;
+  --list-text: #edf0fa;
+  --list-muted: #abb5cc;
+  --list-accent: #c7bfff;
+  --list-focus: #afa2ff;
+  --list-danger: #ffacc1;
+  --list-danger-hover: #472b3d;
+  --list-scrollbar: #59637e;
+}
+
+/* Keep portal menus and dialogs on the same palette as the canvas controls. */
+html[data-color-scheme="dark"]:not([data-dsh-embed]) :is(#root, body)
+  :is(.moki-menu-surface, [role="dialog"][aria-modal="true"], [aria-label="当前页面素材列表"], [aria-label="白板版本记录"]) {
+  background-color: var(--list-panel) !important;
+  border-color: var(--list-border) !important;
+  color: var(--list-text);
+  color-scheme: dark;
+  scrollbar-color: var(--list-scrollbar) transparent;
+}
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) :is(#root, body)
+  :is(
+    .moki-menu-surface, [role="dialog"][aria-modal="true"], .moki-dialog-header,
+    [aria-label="当前页面素材列表"], [aria-label="白板版本记录"], [data-whiteboard-control-surface]
+  ) {
+  & :where([class*="overflow-y-auto"], [class~="overflow-auto"], pre) {
+    scrollbar-color: var(--list-scrollbar) transparent;
+  }
+
+  & :is(
+    [class~="bg-[#f1f2f7]"], [class~="bg-[#edf0f5]"], [class~="bg-[#f7f7fb]"],
+    [class~="bg-[#eef0f5]"], [class~="bg-[#f4f5f8]"], [class~="bg-[#f6f7fa]"]
+  ) {
+    background-color: var(--list-row) !important;
+  }
+
+  & :is(
+    [class~="bg-[#e9e7ff]"], [class~="bg-[#f0effa]"], [class~="bg-[#f8f7ff]"],
+    [class~="bg-[#eeecff]/65"]
+  ) {
+    background-color: var(--list-selected) !important;
+    --tw-ring-offset-color: var(--list-panel);
+  }
+
+  & :is([class~="bg-[#edf9f4]"], [class~="bg-[#eef9f5]"]) {
+    background-color: #203c36 !important;
+  }
+
+  & [class~="bg-[#fff8e8]"] { background-color: #403222 !important; }
+  & [class~="text-[#357d65]"] { color: #94d6bd !important; }
+  & :is([class~="text-[#8d6b2d]"], [class~="text-[#9a6d24]"], [class~="text-[#9a7a3b]"]) {
+    color: #edcb90 !important;
+  }
+
+  & :is(
+    [class~="border-[#e1e4ed]"], [class~="border-[#e8e9f0]"], [class~="border-[#e7e9f1]"],
+    [class~="border-[#e0e2ec]"], [class~="border-[#e3e5ed]"], [class~="border-[#dedcf3]"],
+    [class~="border-[#dde0e9]"], [class~="border-[#eceef3]"]
+  ) {
+    border-color: var(--list-border) !important;
+  }
+
+  & :is(
+    [class~="text-[#20263b]"], [class~="text-[#30364b]"], [class~="text-[#34394d]"],
+    [class~="text-[#3b4154]"], [class~="text-[#3d4358]"], [class~="text-[#3e4356]"],
+    [class~="text-[#43495d]"], [class~="text-[#444b61]"], [class~="text-[#464c61]"],
+    [class~="text-[#4e5570]"], [class~="text-[#4f566b]"], [class~="text-[#4f566c]"]
+  ) {
+    color: var(--list-text) !important;
+  }
+
+  & :is(
+    [class~="text-[#565c70]"], [class~="text-[#5f6579]"], [class~="text-[#676d80]"],
+    [class~="text-[#6d7284]"], [class~="text-[#6d7386]"], [class~="text-[#747a8d]"], [class~="text-[#747b8f]"],
+    [class~="text-[#747b90]"], [class~="text-[#7a8092]"], [class~="text-[#7b8197]"],
+    [class~="text-[#7c8294]"], [class~="text-[#8b90a1]"], [class~="text-[#9096a8]"],
+    [class~="text-[#959aac]"], [class~="text-[#979cad]"], [class~="text-[#989dae]"],
+    [class~="text-[#999fb0]"], [class~="text-[#9aa0b1]"], [class~="text-[#9ba0af]"],
+    [class~="text-[#a0a5b4]"], [class~="text-[#a2a6b6]"], [class~="text-[#a4a8b6]"]
+  ) {
+    color: var(--list-muted) !important;
+  }
+
+  & :is(
+    [class~="text-[#5650ae]"], [class~="text-[#5f58bd]"], [class~="text-[#6761bf]"],
+    [class~="text-[#6860c2]"], [class~="text-[#7770a7]"]
+  ) {
+    color: var(--list-accent) !important;
+  }
+
+  & :is([class~="text-[#b64a68]"], [class~="text-[#c43e68]"], .is-danger) {
+    color: var(--list-danger) !important;
+  }
+
+  & :is(
+    [class~="hover:bg-white"], [class~="hover:bg-[#f2f3f7]"], [class~="hover:bg-[#f4f5f8]"],
+    [class~="hover:bg-[#f7f8fb]"], [class~="hover:bg-[#f0efff]"], [class~="hover:bg-[#eeecff]"],
+    [class~="hover:bg-[#eeedff]"], [class~="hover:bg-[#ebeafd]"], [class~="hover:bg-[#eceafd]"],
+    [class~="hover:bg-[#ecebfa]"], [class~="hover:bg-[#f1f0ff]"], [class~="hover:bg-[#f2f1ff]"],
+    [class~="hover:bg-[#f5f3ff]"], [class~="hover:bg-[#f5f4ff]"], [class~="hover:bg-[#efedff]"]
+  ):not(:disabled):hover {
+    background-color: var(--list-hover) !important;
+  }
+
+  & :is([class~="hover:bg-[#fff0f3]"], .is-danger):not(:disabled):is(:hover, :focus-visible) {
+    background-color: var(--list-danger-hover) !important;
+    color: var(--list-danger) !important;
+  }
+
+  & :is(button, [role="button"], [role^="menuitem"]):focus-visible {
+    outline: 2px solid var(--list-focus);
+    outline-offset: -2px;
+  }
+
+  & :is(input:not([type="checkbox"], [type="range"], [type="color"]), textarea, select) {
+    border-color: var(--list-border) !important;
+    background-color: var(--list-inset) !important;
+    color: var(--list-text) !important;
+  }
+
+  & :is(input, textarea)::placeholder { color: var(--list-muted); }
+
+  & :is(input, textarea, select):focus-visible {
+    border-color: var(--list-focus) !important;
+    outline: 2px solid var(--list-focus);
+    outline-offset: -1px;
+  }
+
+  & label:has(input[type="search"].bg-transparent) {
+    background-color: var(--list-inset) !important;
+
+    &:focus-within { --tw-ring-color: var(--list-focus); }
+
+    & input.bg-transparent {
+      background-color: transparent !important;
+      outline: none;
+    }
+  }
+}
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) :is(#root, body) .moki-menu-surface {
+  /* The menu can be opened above an otherwise light document preview. */
+  background: var(--list-panel) !important;
+
+  & :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):not(:disabled, [aria-disabled="true"], .native-whiteboard-color-swatch):is(:hover, :focus-visible) {
+    background-color: var(--list-hover);
+    color: var(--list-accent);
+  }
+
+  & :is([aria-checked="true"], [aria-expanded="true"])[role^="menuitem"]:not(.native-whiteboard-color-swatch) {
+    background-color: var(--list-selected);
+    color: var(--list-accent);
+  }
+
+  & :is(.moki-menu-divider, [role="separator"]) { background-color: var(--list-border); }
+  & kbd, &.shared-view-context > p { color: var(--list-muted); }
+}
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) #root
+  :is([aria-label="白板页面列表"], [aria-label="当前页面素材列表"], [aria-label="白板版本记录"]) {
+  & :is([data-whiteboard-page-row], article[role="button"], button[class~="bg-[#f4f5f8]"]) {
+    background-color: var(--list-row) !important;
+    border-color: var(--list-border) !important;
+  }
+
+  & :is([data-whiteboard-page-row], article[role="button"], button[class~="bg-[#f4f5f8]"]):is(:hover, :focus-within) {
+    background-color: var(--list-hover) !important;
+    border-color: var(--list-active-border) !important;
+  }
+
+  & [data-whiteboard-page-row][data-current="true"] {
+    background-color: var(--list-selected) !important;
+    border-color: var(--list-active-border) !important;
+  }
+
+  & ul[class~="border-dashed"] { border-color: var(--list-border) !important; }
+}
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) #root [data-page-group-accent] {
+  background-color: var(--group-accent-bg, #393158) !important;
+  color: var(--group-accent-text, var(--list-accent)) !important;
+}
+
+html[data-color-scheme="dark"] [data-page-group-accent="teal"] { --group-accent-bg: #243e3c; --group-accent-text: #95e0cb; }
+html[data-color-scheme="dark"] [data-page-group-accent="amber"] { --group-accent-bg: #483820; --group-accent-text: #f2cc83; }
+html[data-color-scheme="dark"] [data-page-group-accent="rose"] { --group-accent-bg: #462c40; --group-accent-text: #ffb0c9; }
+html[data-color-scheme="dark"] [data-page-group-accent="blue"] { --group-accent-bg: #293955; --group-accent-text: #b0cbff; }
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) :is(#root, body)
+  [role="tree"] [role="treeitem"] {
+  & > div:first-child:hover { background-color: var(--list-hover) !important; }
+  &[aria-selected="true"] > div:first-child {
+    background-color: var(--list-selected) !important;
+    border-color: var(--list-active-border) !important;
+  }
+}
+
+html[data-color-scheme="dark"]:not([data-dsh-embed]) #root {
+  & [data-whiteboard-page-toolbar] > button:where(:enabled):is(:hover, :focus-visible) {
+    background-color: var(--list-hover) !important;
+  }
+  & [data-whiteboard-page-toolbar] > button[aria-expanded="true"] {
+    background-color: var(--list-selected) !important;
+  }
+  & :is([data-whiteboard-page-toolbar] > button, .board-card-actions button):focus-visible {
+    outline: 2px solid var(--list-focus);
+    outline-offset: -2px;
+  }
+  & :is(.new-board-card, .board-card-actions button, .manager-brand p) {
+    color: var(--list-accent);
+  }
+  & .new-board-card:is(:hover, :focus-visible) {
+    background: var(--list-hover);
+    border-color: var(--list-active-border);
+  }
+  & :is(.settings-share-link, .share-visit-list > li) {
+    background: var(--list-row);
+    border-color: var(--list-border);
+  }
+  & :is(.settings-share-link > strong span, .share-visit-status, .share-visit-times, .share-visit-address) {
+    color: var(--list-muted);
+  }
+  & .share-visit-status.is-online { color: #94d6bd; }
+  & .settings-share-link button:not(:disabled):is(:hover, :focus-visible) {
+    background: var(--list-hover);
+    color: var(--list-accent);
+  }
+  & .settings-share-link .settings-share-revoke:not(:disabled):is(:hover, :focus-visible) {
+    background: var(--list-danger-hover);
+    color: var(--list-danger);
+  }
+  & :is(.settings-tabs, .settings-theme-options, .mcp-transport-switch) button:not(:disabled):is(:hover, :focus-visible) {
+    color: var(--list-accent);
+  }
+  & .manager-search:focus-within {
+    border-color: var(--list-focus);
+    outline: 1px solid var(--list-focus);
+  }
+  & .manager-dialog-error { color: var(--list-danger) !important; }
+}

@@ -6405,13 +6405,15 @@ export function NativeWhiteboard({
     const name = pageName(store.snapshot, page.id);
     const editedAt = formatPageEditedAt(page);
     const isCurrent = page.id === currentPageId;
-    if(readOnly)return <li key={page.id} className={`relative flex min-h-10 items-center gap-1 rounded-[16px] border px-2.5 transition ${isCurrent?'border-[#cbc7ef] bg-[#f0efff]':'border-[#e8e9f0] bg-white'}`}><button type="button" aria-label={`切换到页面 ${name}`} aria-current={isCurrent ? "page" : undefined} onClick={()=>editor.setCurrentPage(page.id)} className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"><span className="block truncate text-xs font-bold text-[#30364d]">{name}</span><span className="mt-0.5 block truncate text-[0.625rem] font-semibold text-[#989dae]">{editedAt}</span></button></li>;
+    if(readOnly)return <li key={page.id} data-whiteboard-page-row data-current={isCurrent} className={`relative flex min-h-10 items-center gap-1 rounded-[16px] border px-2.5 transition ${isCurrent?'border-[#cbc7ef] bg-[#f0efff]':'border-[#e8e9f0] bg-white'}`}><button type="button" aria-label={`切换到页面 ${name}`} aria-current={isCurrent ? "page" : undefined} onClick={()=>editor.setCurrentPage(page.id)} className="min-w-0 flex-1 px-1 py-1.5 text-left outline-none"><span className="block truncate text-xs font-bold text-[#30364d]">{name}</span><span className="mt-0.5 block truncate text-[0.625rem] font-semibold text-[#989dae]">{editedAt}</span></button></li>;
     const isRenaming = page.id === renamingPageId;
     const isDropTarget = pageDropTarget?.type === "page" &&
       pageDropTarget.id === page.id && draggedPageId !== page.id;
     return (
       <li
         key={page.id}
+        data-whiteboard-page-row
+        data-current={isCurrent}
         draggable={!isRenaming}
         onDragStart={(event) => {
           draggedPageIdRef.current = page.id;
