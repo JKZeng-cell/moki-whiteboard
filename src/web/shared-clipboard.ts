@@ -37,11 +37,27 @@ export function writeSharedClipboardEvent(event:ClipboardEvent,payload:SharedCli
  try{event.clipboardData.setData(NATIVE_WHITEBOARD_CLIPBOARD_TYPE,payload.native);}catch{/* Standard formats still work across apps. */}
  event.clipboardData.setData('text/plain',payload.text);event.clipboardData.setData('text/html',payload.html);event.preventDefault();return true;
 }
-/** execCommand copy remains usable on non-secure LAN HTTP origins. */
-export function copySharedClipboardFallback(payload:SharedClipboard):boolean{
- const previous=document.activeElement as HTMLElement|null,input=document.createElement('textarea');input.value=payload.text;input.readOnly=true;input.style.cssText='position:fixed;left:-10000px;top:0';document.body.append(input);input.select();
- const copy=(event:ClipboardEvent)=>{writeSharedClipboardEvent(event,payload);};document.addEventListener('copy',copy);
- try{return typeof document.execCommand==='function'&&document.execCommand('copy');}finally{document.removeEventListener('copy',copy);input.remove();previous?.focus({preventScroll:true});}
+/** The selection fallback also works on LAN HTTP origins. */
+export function copySharedTextFallback(text: string, onCopy?: (event: ClipboardEvent) => void): boolean {
+ const previous = document.activeElement as HTMLElement | null;
+ const input = document.createElement('textarea');
+ input.value = text;
+ input.readOnly = true;
+ input.style.cssText = 'position:fixed;left:-10000px;top:0';
+ document.body.append(input);
+ input.select();
+ if (onCopy) document.addEventListener('copy', onCopy);
+ try {
+  return typeof document.execCommand === 'function' && document.execCommand('copy');
+ } finally {
+  if (onCopy) document.removeEventListener('copy', onCopy);
+  input.remove();
+  previous?.focus({preventScroll:true});
+ }
+}
+
+export function copySharedClipboardFallback(payload: SharedClipboard): boolean {
+ return copySharedTextFallback(payload.text, event => { writeSharedClipboardEvent(event, payload); });
 }
 export async function inlineSharedImages(payload:SharedClipboard,cache:Map<string,string>){
  await Promise.allSettled(payload.images.filter(src=>!src.startsWith('data:')&&!cache.has(src)).map(async src=>{const response=await fetch(src);if(!response.ok)throw new Error('图片无法读取');const blob=await response.blob();if(!blob.type.startsWith('image/'))return;const value=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(blob);});cache.set(src,value);}));

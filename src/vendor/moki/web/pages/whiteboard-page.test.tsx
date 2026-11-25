@@ -82,6 +82,8 @@ const tldraw = vi.hoisted(() => {
     zoomToSelection: ReturnType<typeof vi.fn>;
     fitCurrentPage: ReturnType<typeof vi.fn>;
     setCurrentTool: ReturnType<typeof vi.fn>;
+    captureToolIntent: ReturnType<typeof vi.fn>;
+    completeToolAction: ReturnType<typeof vi.fn>;
     setStyleForNextShapes: ReturnType<typeof vi.fn>;
     updateInstanceState: ReturnType<typeof vi.fn>;
     getCurrentPageShapeIds: ReturnType<typeof vi.fn>;
@@ -112,6 +114,8 @@ const tldraw = vi.hoisted(() => {
     zoomToSelection: vi.fn(),
     fitCurrentPage: vi.fn(),
     setCurrentTool: vi.fn(),
+    captureToolIntent: vi.fn(() => ({ revision: 0, pageId: 'page:page' })),
+    completeToolAction: vi.fn(),
     setStyleForNextShapes: vi.fn(),
     updateInstanceState: vi.fn(),
     getCurrentPageShapeIds: vi.fn(() => [] as string[]),
@@ -1542,6 +1546,26 @@ describe("WhiteboardPage", () => {
     expect(textButton).not.toHaveAttribute("aria-expanded");
     expect(screen.queryByLabelText("文字样式")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "文字加粗" })).not.toBeInTheDocument();
+  });
+
+  it("executes the advertised eraser, arrow, file, mind-map and link shortcuts", async () => {
+    render(<MemoryRouter><WhiteboardPage /></MemoryRouter>);
+    await screen.findByRole("button", {name: "模拟白板修改"});
+    fireEvent.keyDown(window, {key: "e"});
+    expect(tldraw.editor.setCurrentTool).toHaveBeenLastCalledWith("eraser");
+    fireEvent.keyDown(window, {key: "a"});
+    expect(tldraw.editor.setCurrentTool).toHaveBeenLastCalledWith("arrow");
+    fireEvent.keyDown(window, {key: "f"});
+    expect(screen.getByRole("menu", {name: "选择本地文件或文件夹"})).toBeInTheDocument();
+    fireEvent.keyDown(window, {key: "Escape"});
+    fireEvent.keyDown(window, {key: "m"});
+    expect(screen.getByRole("menu", {name: "思维导图模板"})).toBeInTheDocument();
+    fireEvent.keyDown(window, {key: "Escape"});
+    fireEvent.keyDown(window, {key: "l"});
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    tldraw.editor.setCurrentTool.mockClear();
+    fireEvent.keyDown(window, {key: "e"});
+    expect(tldraw.editor.setCurrentTool).not.toHaveBeenCalled();
   });
 
   it("toggles arrow and draw menus by clicking their active tool again", async () => {

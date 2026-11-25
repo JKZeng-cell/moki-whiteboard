@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { canvasTextCaretOffset, wrapCanvasTextLines } from "../../whiteboard/canvas-text-lines.js";
 import {
   AlignCenter,
   AlignLeft,
@@ -425,35 +426,7 @@ export function wrapNativeCanvasText(
   maxWidth: number,
   maxLines = Number.POSITIVE_INFINITY,
 ): string[] {
-  if (!text || maxLines <= 0) return [];
-  const width = Math.max(1, maxWidth);
-  const lines: string[] = [];
-  for (const paragraph of text.split(/\r?\n/u)) {
-    if (!paragraph) {
-      lines.push("");
-      continue;
-    }
-    let current = "";
-    for (const character of Array.from(paragraph)) {
-      const candidate = current + character;
-      if (current && context.measureText(candidate).width > width) {
-        lines.push(current.trimEnd());
-        current = /^\s$/u.test(character) ? "" : character;
-      } else {
-        current = candidate;
-      }
-    }
-    if (current || paragraph) lines.push(current.trimEnd());
-  }
-  if (lines.length <= maxLines) return lines;
-  const visible = lines.slice(0, maxLines);
-  const ellipsis = "…";
-  let last = visible.at(-1) ?? "";
-  while (last && context.measureText(`${last}${ellipsis}`).width > width) {
-    last = Array.from(last).slice(0, -1).join("");
-  }
-  visible[visible.length - 1] = `${last}${ellipsis}`;
-  return visible;
+  return wrapCanvasTextLines(context, text, maxWidth, maxLines).map(line => line.text);
 }
 
 function traceNativeBezierPath(
@@ -548,6 +521,66 @@ export function nativeCanvasTextStartY(
   if (!verticallyCentered || lineCount <= 0) return bounds.y + 16;
   const blockHeight = fontSize + Math.max(0, lineCount - 1) * lineHeight;
   return bounds.center.y - blockHeight / 2;
+}
+
+function nativeCanvasTextLayout(context: CanvasRenderingContext2D, shape: NativeWhiteboardShape, bounds: NativeBounds) {
+  const text = nativeRichTextValue(shape.props.richText);
+  if (!text || !["note", "text", "geo"].includes(shape.type)) return;
+  const size = ({ s: 14, m: 18, l: 24, xl: 32 } as Record<string, number>)[String(shape.props.size)] ?? 18;
+  const fontSize = Math.max(12, size * Number(shape.props.scale || 1));
+  const font = `${shape.props.bold === true ? "700" : "400"} ${fontSize}px system-ui, sans-serif`;
+  const align = String(shape.props.textAlign ?? shape.props.align ?? "start");
+  const textX = align === "middle" ? bounds.center.x : align === "end" ? bounds.x + bounds.w - 16 : bounds.x + 16;
+  const maxWidth = Math.max(20, bounds.w - 32);
+  const lineHeight = fontSize * 1.35;
+  const maxLines = shape.type === "note"
+    ? Math.max(1, Math.floor((bounds.h - 32) / lineHeight))
+    : isMindMapNode(shape) ? Number.POSITIVE_INFINITY : 20;
+  context.font = font;
+  const wrapped = wrapCanvasTextLines(context, text, maxWidth, maxLines);
+  const top = nativeCanvasTextStartY(bounds, fontSize, lineHeight, wrapped.length, shape.type === "geo" && isMindMapNode(shape));
+  const lines = wrapped.map((line, index) => {
+    const measured = context.measureText(line.text).width;
+    const width = Math.min(maxWidth, measured);
+    const left = align === "middle" ? textX - width / 2 : align === "end" ? textX - width : textX;
+    return { ...line, left, width, top: top + index * lineHeight, scale: measured > 0 ? width / measured : 1 };
+  });
+  return { text, font, fontSize, align, textX, maxWidth, lineHeight, top, lines };
+}
+
+type NativeCanvasTextLayout = NonNullable<ReturnType<typeof nativeCanvasTextLayout>>;
+export type NativeReadonlyTextSelection = { text: string; clear: () => void };
+
+type ReadonlyTextRange = {
+  shape: NativeWhiteboardShape;
+  layout: NativeCanvasTextLayout;
+  anchor: number;
+  focus: number;
+};
+
+function readonlyTextOffset(
+  context: CanvasRenderingContext2D,
+  range: Pick<ReadonlyTextRange, "shape" | "layout">,
+  point: NativePoint,
+  insideText: boolean,
+): number | undefined {
+  const { shape, layout } = range;
+  const bounds = nativeShapeBounds(shape);
+  const rotation = (Number(shape.rotation) || 0) * Math.PI / 180;
+  const local = rotation ? rotatePoint(point, bounds.center, -rotation) : point;
+  const index = Math.floor((local.y - layout.top) / layout.lineHeight);
+  if (insideText && shape.type === "note" && !pointInNativeBounds(local, bounds)) return;
+  if (index < 0) return insideText ? undefined : layout.lines[0]?.start;
+  if (index >= layout.lines.length) return insideText ? undefined : layout.lines.at(-1)?.end;
+  const line = layout.lines[index]!;
+  const italicOffset = shape.props.italic === true ? Math.max(0, layout.fontSize - (local.y - line.top)) * 0.2 : 0;
+  const distance = local.x - line.left - italicOffset;
+  if (insideText && (!line.width || distance < -2 || distance > line.width + 2)) return;
+  context.save();
+  context.font = layout.font;
+  const offset = canvasTextCaretOffset(context, line, distance / line.scale);
+  context.restore();
+  return offset;
 }
 
 type NativeWhiteboardClipboardPayload = {
@@ -1605,6 +1638,9 @@ export class NativeWhiteboardEditor {
   readonly store: NativeWhiteboardStore;
   private selected = new Set<string>();
   private currentTool = "select";
+  private toolIntentRevision = 0;
+  private autoToolSwitch = false;
+  private toolListeners = new Set<(tool: string) => void>();
   private nextGeo: NativeGeoShape = "rectangle";
   private viewport = { x: 0, y: 0, width: 1000, height: 700, zoom: 1 };
   private refresh?: () => void;
@@ -1813,6 +1849,7 @@ export class NativeWhiteboardEditor {
     });
     const ids = copies.map((shape) => shape.id);
     this.select(...ids);
+    this.completeToolAction();
     return ids;
   }
 
@@ -1837,6 +1874,7 @@ export class NativeWhiteboardEditor {
       },
     }]);
     this.select(id);
+    this.completeToolAction();
     return id;
   }
 
@@ -2299,7 +2337,34 @@ export class NativeWhiteboardEditor {
   }
 
   setCurrentTool(tool: string): void {
+    // Even reselecting the same tool expresses a new manual intent.
+    this.toolIntentRevision++;
+    const changed = this.currentTool !== tool;
     this.currentTool = tool;
+    if (changed) {
+      for (const listener of this.toolListeners) listener(tool);
+      this.refresh?.();
+    }
+  }
+
+  setAutoToolSwitch(enabled: boolean): void {
+    if (this.autoToolSwitch !== enabled) this.toolIntentRevision++;
+    this.autoToolSwitch = enabled;
+  }
+
+  subscribeCurrentTool(listener: (tool: string) => void): () => void {
+    this.toolListeners.add(listener);
+    return () => { this.toolListeners.delete(listener); };
+  }
+
+  captureToolIntent(): {revision: number; pageId: string} {
+    return {revision: this.toolIntentRevision, pageId: this.getCurrentPageId()};
+  }
+
+  completeToolAction(intent = this.captureToolIntent()): void {
+    if (!this.autoToolSwitch || intent.revision !== this.toolIntentRevision ||
+        intent.pageId !== this.getCurrentPageId() || this.currentTool === "select") return;
+    this.setCurrentTool("select");
   }
 
   getCurrentTool(): string {
@@ -2329,7 +2394,8 @@ export class NativeWhiteboardEditor {
     files: File[];
     point?: NativePoint;
     localPaths?: Array<string | undefined>;
-  }, _options?: unknown): Promise<void> {
+  }, options?: {force?: boolean; toolIntent?: {revision: number; pageId: string}}): Promise<void> {
+    const intent = options?.toolIntent ?? this.captureToolIntent();
     const point = content.point ?? this.getViewportPageBounds().center;
     let offset = 0;
     for (const [fileIndex, file] of content.files.entries()) {
@@ -2339,7 +2405,7 @@ export class NativeWhiteboardEditor {
         const assetId = createNativeId("asset");
         const width = mediaKind === "video" ? 640 : 440;
         const height = mediaKind === "video" ? 360 : 116;
-        const pageId = this.getCurrentPageId();
+        const pageId = intent.pageId;
         const id = createNativeShapeId();
         this.store.mutate((snapshot) => {
           snapshot.document.store[assetId] = {
@@ -2373,7 +2439,7 @@ export class NativeWhiteboardEditor {
           };
           touchPageEdited(snapshot, pageId);
         });
-        this.select(id);
+        if (this.getCurrentPageId() === pageId) this.select(id);
         offset += 28;
         continue;
       }
@@ -2386,7 +2452,7 @@ export class NativeWhiteboardEditor {
       const displayScale = Math.min(1, maxDisplay / Math.max(asset.record.width, asset.record.height));
       const width = Math.max(80, Math.round(asset.record.width * displayScale));
       const height = Math.max(80, Math.round(asset.record.height * displayScale));
-      const pageId = this.getCurrentPageId();
+      const pageId = intent.pageId;
       const id = createNativeShapeId();
       this.store.mutate((snapshot) => {
         snapshot.document.store[assetId] = {
@@ -2423,13 +2489,15 @@ export class NativeWhiteboardEditor {
         };
         touchPageEdited(snapshot, pageId);
       });
-      this.select(id);
+      if (this.getCurrentPageId() === pageId) this.select(id);
       offset += 28;
     }
+    if (offset > 0) this.completeToolAction(intent);
   }
 
   setCurrentPage(id: string): void {
     if (this.store.snapshot.document.store[id]?.typeName !== "page") return;
+    if (id !== this.getCurrentPageId()) this.toolIntentRevision++;
     this.viewMemory?.write(this.getCurrentPageId(),{x:this.viewport.x,y:this.viewport.y,zoom:this.viewport.zoom});
     this.store.mutate((snapshot) => {
       snapshot.session = { ...(snapshot.session && typeof snapshot.session === "object" ? snapshot.session : {}), currentPageId: id };
@@ -3319,6 +3387,7 @@ type RotateOrigin = {
 };
 type PointerAction =
   | { kind: "pan"; start: NativePoint; camera: Camera }
+  | { kind: "readonly-text"; pointerId: number; start: NativePoint; range: ReadonlyTextRange; moved: boolean }
   | { kind: "move"; start: NativePoint; origins: Map<string, NativePoint>; changed: boolean; axis?: "x" | "y" }
   | {
       kind: "resize";
@@ -4059,9 +4128,12 @@ export function NativeWhiteboard({
   readOnly=false,
   onReadonlyShapeOpen,
   onReadonlySelectionChange,
+  onReadonlyTextSelectionChange,
   onReadonlyGroupToggle,
   onReadonlyContextMenu,
   onMount,
+  autoSwitchTools = false,
+  onToolChange,
   maxAssetSize: _maxAssetSize,
   color = "black",
   drawColor = color,
@@ -4089,9 +4161,12 @@ export function NativeWhiteboard({
   readOnly?:boolean;
   onReadonlyShapeOpen?:(shapeId:string)=>void;
   onReadonlySelectionChange?:(ids:string[])=>void;
+  onReadonlyTextSelectionChange?: (selection: NativeReadonlyTextSelection | undefined) => void;
   onReadonlyGroupToggle?:(groupId:string,collapsed:boolean)=>void;
   onReadonlyContextMenu?:(point:{x:number;y:number})=>void;
   onMount?: (editor: NativeWhiteboardEditor) => void;
+  autoSwitchTools?: boolean;
+  onToolChange?: (tool: string) => void;
   maxAssetSize?: number;
   color?: NativeCanvasColor;
   drawColor?: NativeCanvasColor;
@@ -4171,6 +4246,8 @@ export function NativeWhiteboard({
   const [draggingFile, setDraggingFile] = useState(false);
   const [clipboardNotice, setClipboardNotice] = useState("");
   const readonlySpaceRef=useRef(false);
+  const readonlyTextRangeRef = useRef<ReadonlyTextRange | undefined>(undefined);
+  const readonlyTextLayouts = useRef(new WeakMap<NativeWhiteboardShape, NativeCanvasTextLayout>());
   const readonlyLinkPressRef=useRef<{id:string;x:number;y:number;moved:boolean}|undefined>(undefined);
   const [pageMenuOpen, setPageMenuOpen] = useState(false);
   const [pageQuery, setPageQuery] = useState("");
@@ -4265,7 +4342,14 @@ export function NativeWhiteboard({
   useEffect(()=>{if(readOnly){editor.selectForViewing([]);editor.setCurrentTool('select');}},[editor,readOnly]);
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
-  const selectReadonly=useCallback((ids:string[])=>{editor.selectForViewing(ids);onReadonlySelectionChange?.(editor.getSelectedShapeIds());refresh();drawAgainRef.current();},[editor,onReadonlySelectionChange,refresh]);
+  const clearReadonlyText = useCallback(() => {
+    if (!readonlyTextRangeRef.current) return;
+    readonlyTextRangeRef.current = undefined;
+    if (actionRef.current?.kind === "readonly-text") actionRef.current = undefined;
+    onReadonlyTextSelectionChange?.(undefined);
+    drawAgainRef.current();
+  }, [onReadonlyTextSelectionChange]);
+  const selectReadonly=useCallback((ids:string[])=>{clearReadonlyText();editor.selectForViewing(ids);onReadonlySelectionChange?.(editor.getSelectedShapeIds());refresh();drawAgainRef.current();},[editor,clearReadonlyText,onReadonlySelectionChange,refresh]);
   useEffect(()=>{if(!readOnly)return;const down=(event:KeyboardEvent)=>{if(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable=true],video,audio,[role=menu]'))return;if(event.code==='Space'){if(event.target instanceof Element&&event.target.closest('button'))return;event.preventDefault();readonlySpaceRef.current=true;}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){if(document.querySelector('[aria-modal=true]'))return;event.preventDefault();selectReadonly([...editor.getCurrentPageShapeIds()]);}if(event.key==='Escape')selectReadonly([]);};const up=(event:KeyboardEvent)=>{if(event.code==='Space')readonlySpaceRef.current=false;};const blur=()=>{readonlySpaceRef.current=false;};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur);};},[editor,readOnly,selectReadonly]);
   editor.attachRefresh(refresh);
   editor.attachImageHandlers(preloadImageSources, cachePreviewImage);
@@ -4866,58 +4950,47 @@ export function NativeWhiteboard({
           }
           context.globalAlpha = typeof shape.opacity === "number" ? shape.opacity : 1;
         }
-        const text = nativeRichTextValue(shape.props.richText);
-        if (text && shape.id !== textDraftRef.current?.shapeId && ["note", "text", "geo"].includes(shape.type)) {
-          const size = ({ s: 14, m: 18, l: 24, xl: 32 } as Record<string, number>)[String(shape.props.size)] ?? 18;
-          const fontSize = Math.max(12, size * Number(shape.props.scale || 1));
-          const bold = shape.props.bold === true;
+        const textLayout = shape.id !== textDraftRef.current?.shapeId ? nativeCanvasTextLayout(context, shape, bounds) : undefined;
+        if (textLayout) {
+          if (readOnly) readonlyTextLayouts.current.set(shape, textLayout);
+          const { fontSize, align, textX, maxWidth, lines, lineHeight } = textLayout;
           const italic = shape.props.italic === true;
           const underline = shape.props.underline === true;
-          const align = String(shape.props.textAlign ?? shape.props.align ?? "start");
           const textColor = shape.type === "note"
             ? COLORS[String(shape.props.labelColor ?? "black") as NativeCanvasColor] ?? COLORS.black
             : color;
           context.fillStyle = textColor;
           context.strokeStyle = textColor;
-          context.font = `${bold ? "700 " : "400 "}${fontSize}px system-ui, sans-serif`;
           context.textBaseline = "top";
           context.textAlign = align === "middle" ? "center" : align === "end" ? "right" : "left";
-          const textX = align === "middle"
-            ? bounds.center.x
-            : align === "end"
-              ? bounds.x + bounds.w - 16
-              : bounds.x + 16;
-          const maxWidth = Math.max(20, bounds.w - 32);
-          const lineHeight = fontSize * 1.35;
-          const maxLines = shape.type === "note"
-            ? Math.max(1, Math.floor((bounds.h - 32) / lineHeight))
-            : isMindMapNode(shape) ? Number.POSITIVE_INFINITY : 20;
-          const lines = wrapNativeCanvasText(context, text, maxWidth, maxLines);
-          let y = nativeCanvasTextStartY(
-            bounds,
-            fontSize,
-            lineHeight,
-            lines.length,
-            shape.type === "geo" && isMindMapNode(shape),
-          );
           if (shape.type === "note") {
             context.save();
             context.beginPath();
             context.rect(bounds.x, bounds.y, bounds.w, bounds.h);
             context.clip();
           }
+          const range = readOnly ? readonlyTextRangeRef.current : undefined;
           for (const line of lines) {
-            drawNativeCanvasTextLine(context, line, textX, y, maxWidth, fontSize, italic);
-            if (underline && line) {
-              const measured = Math.min(maxWidth, context.measureText(line).width);
-              const lineStart = align === "middle" ? textX - measured / 2 : align === "end" ? textX - measured : textX;
+            const y = line.top;
+            if (range?.shape.id === shape.id && range.layout.text === textLayout.text) {
+              const from = Math.max(line.start, Math.min(range.anchor, range.focus));
+              const to = Math.min(line.end, Math.max(range.anchor, range.focus));
+              if (from < to) {
+                const left = context.measureText(line.text.slice(0, from - line.start)).width * line.scale;
+                const right = context.measureText(line.text.slice(0, to - line.start)).width * line.scale;
+                context.fillStyle = darkCanvas ? "rgba(170,164,255,.42)" : "rgba(98,91,197,.30)";
+                context.fillRect(line.left + left, y, right - left, lineHeight);
+                context.fillStyle = textColor;
+              }
+            }
+            drawNativeCanvasTextLine(context, line.text, textX, y, maxWidth, fontSize, italic);
+            if (underline && line.text) {
               context.lineWidth = Math.max(1, fontSize / 14);
               context.beginPath();
-              context.moveTo(lineStart, y + fontSize + 2);
-              context.lineTo(lineStart + measured, y + fontSize + 2);
+              context.moveTo(line.left, y + fontSize + 2);
+              context.lineTo(line.left + line.width, y + fontSize + 2);
               context.stroke();
             }
-            y += lineHeight;
           }
           if (shape.type === "note") context.restore();
         }
@@ -5219,9 +5292,26 @@ export function NativeWhiteboard({
   drawAgainRef.current = scheduleDraw;
 
   useEffect(() => {
+    editor.setAutoToolSwitch(!readOnly && autoSwitchTools);
+  }, [autoSwitchTools, editor, readOnly]);
+
+  useEffect(() => {
+    if (onToolChange) return editor.subscribeCurrentTool(onToolChange);
+  }, [editor, onToolChange]);
+
+  useEffect(() => {
     onMount?.(editor);
     let observedPage=editor.getCurrentPageId();
-    const unsubscribe = store.listen(() => {const page=editor.getCurrentPageId();if(page!==observedPage){observedPage=page;editor.restoreCurrentPageView();}refresh();scheduleDraw();});
+    const unsubscribe = store.listen(event => {
+      const page = editor.getCurrentPageId();
+      if (event.scope === "document" || page !== observedPage) clearReadonlyText();
+      if (page !== observedPage) {
+        observedPage = page;
+        editor.restoreCurrentPageView();
+      }
+      refresh();
+      scheduleDraw();
+    });
     const redrawFonts=()=>scheduleDraw();
     document.fonts?.addEventListener('loadingdone',redrawFonts);
     const observer = typeof ResizeObserver === "undefined"
@@ -5251,7 +5341,7 @@ export function NativeWhiteboard({
       for (const entry of imageCache.current.values()) entry.image.src = "";
       imageCache.current.clear();
     };
-  }, [editor, onMount, refresh, scheduleDraw, store]);
+  }, [editor, onMount, refresh, scheduleDraw, store, clearReadonlyText]);
 
   useEffect(() => { scheduleDraw(); }, [revision, scheduleDraw]);
 
@@ -5362,7 +5452,9 @@ export function NativeWhiteboard({
       }
     } else if (value) {
       const size = autoSize ?? measureTextDraft({ ...draft, autoSize: true }, value);
+      const id = createNativeShapeId();
       editor.createShapes([{
+        id,
         type: "text",
         x: draft.point.x,
         y: draft.point.y,
@@ -5380,7 +5472,9 @@ export function NativeWhiteboard({
           scale: 1,
         },
       }]);
+      editor.select(id);
     }
+    if (value && editor.getCurrentTool() === "text") editor.completeToolAction();
     setTextDraft(undefined);
     scheduleDraw();
   }, [color, editor, measureMindMapDraft, measureTextDraft, scheduleDraw, textStyle]);
@@ -5406,6 +5500,22 @@ export function NativeWhiteboard({
       return localPoint.x >= box.x - tolerance && localPoint.x <= box.x + box.w + tolerance && localPoint.y >= box.y - tolerance && localPoint.y <= box.y + box.h + tolerance;
     });
   }, [store]);
+
+  const hitReadonlyText = useCallback((shape: NativeWhiteboardShape | undefined, point: NativePoint) => {
+    if (!shape || !onReadonlyTextSelectionChange) return;
+    const context = canvasRef.current?.getContext("2d");
+    if (!context) return;
+    let layout = readonlyTextLayouts.current.get(shape);
+    if (!layout) {
+      context.save();
+      layout = nativeCanvasTextLayout(context, shape, nativeShapeBounds(shape));
+      context.restore();
+      if (!layout) return;
+      readonlyTextLayouts.current.set(shape, layout);
+    }
+    const offset = readonlyTextOffset(context, { shape, layout }, point, true);
+    if (offset !== undefined) return { shape, layout, anchor: offset, focus: offset };
+  }, [onReadonlyTextSelectionChange]);
 
   const hitArrowAtPoint = useCallback((point: NativePoint) => (
     [...visibleShapes(store.snapshot)].reverse().find((shape) => (
@@ -5441,6 +5551,7 @@ export function NativeWhiteboard({
       props: { anchors: relative, isClosed: closed, color: drawColor, size: drawSize, scale: 1 },
     }]);
     if (pageId === editor.getCurrentPageId()) editor.select(id);
+    if (editor.getCurrentTool() === "pen") editor.completeToolAction();
     scheduleDraw();
   }, [drawColor, drawSize, editor, scheduleDraw]);
 
@@ -5528,11 +5639,29 @@ export function NativeWhiteboard({
     if (event.button === 2) return;
     if(readOnly){
       event.preventDefault();window.getSelection()?.removeAllRanges();event.currentTarget.setPointerCapture(event.pointerId);
+      clearReadonlyText();
       const selected=editor.getSelectedShapeIds().map(id=>editor.getShape(id)).filter((shape):shape is NativeWhiteboardShape=>Boolean(shape)),frame=selectionFrame(selected),group=selectedExpandedGroupId(selected);
       if(group&&frame&&pointInNativeBounds(point,nativeExpandedGroupCollapseButtonBounds(frame,cameraRef.current.zoom))){readonlyLinkPressRef.current=undefined;onReadonlyGroupToggle?.(group,true);return;}
       if(hit?.type==='group-folder'&&pointInNativeBounds(point,nativeGroupFolderToggleButtonBounds(nativeShapeBounds(hit)))){const groupId=nativeGroupId(hit);if(groupId){readonlyLinkPressRef.current=undefined;onReadonlyGroupToggle?.(groupId,false);}return;}
       const pan=event.button===1||readonlySpaceRef.current||editor.getCurrentTool()==='hand';
       if(pan){event.currentTarget.dataset.panning='true';actionRef.current={kind:'pan',start:{x:event.clientX,y:event.clientY},camera:{...cameraRef.current}};return;}
+      const range = event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey
+        ? hitReadonlyText(hit, point)
+        : undefined;
+      if (range) {
+        canvasRef.current?.focus({ preventScroll: true });
+        selectReadonly([]);
+        readonlyTextRangeRef.current = range;
+        actionRef.current = {
+          kind: "readonly-text",
+          pointerId: event.pointerId,
+          start: { x: event.clientX, y: event.clientY },
+          range,
+          moved: false,
+        };
+        event.currentTarget.style.setProperty("cursor", "text", "important");
+        return;
+      }
       if(hit){const additive=event.shiftKey||event.ctrlKey||event.metaKey,current=editor.getSelectedShapeIds(),groupId=nativeGroupId(hit);
         const ids=additive?(current.includes(hit.id)?current.filter(id=>id!==hit.id&&(!groupId||nativeGroupId(editor.getShape(id))!==groupId)):[...current,hit.id]):[hit.id];
         selectReadonly(ids);actionRef.current={kind:'pan',start:{x:event.clientX,y:event.clientY},camera:{...cameraRef.current}};
@@ -5804,16 +5933,38 @@ export function NativeWhiteboard({
     draftRef.current = [point];
     actionRef.current = { kind: tool === "draw" ? "draw" : "create", start: point, points: [point] };
     scheduleDraw();
-  }, [beginDirectResize, beginTextDraft, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitShape, readOnly, scheduleDraw,selectReadonly,onReadonlyGroupToggle]);
+  }, [beginDirectResize, beginTextDraft, clearReadonlyText, commitTextDraft, editor, eventPoint, finishPenDraft, hitArrowAtPoint, hitReadonlyText, hitShape, readOnly, scheduleDraw,selectReadonly,onReadonlyGroupToggle]);
 
   const pointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
     const press=readonlyLinkPressRef.current;
     if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>=4)press.moved=true;
     const action = actionRef.current;
+    if (action?.kind === "readonly-text") {
+      if (event.pointerId !== action.pointerId) return;
+      action.moved ||= Math.hypot(event.clientX - action.start.x, event.clientY - action.start.y) >= 3;
+      if (!action.moved) return;
+      const context = canvasRef.current?.getContext("2d");
+      if (!context) return;
+      const { range } = action;
+      const focus = readonlyTextOffset(context, range, eventPoint(event), false);
+      if (focus === undefined || focus === range.focus) return;
+      range.focus = focus;
+      const text = range.layout.text.slice(Math.min(range.anchor, focus), Math.max(range.anchor, focus));
+      onReadonlyTextSelectionChange?.(text ? { text, clear: clearReadonlyText } : undefined);
+      scheduleDraw();
+      return;
+    }
     if (!action) {
       const tool = editor.getCurrentTool();
       const point = eventPoint(event);
-      if(readOnly){event.currentTarget.style.setProperty('cursor',hitShape(point)?.type==='link'?'pointer':editor.getCurrentTool()==='hand'||readonlySpaceRef.current?'grab':'default','important');return;}
+      if (readOnly) {
+        const hit = hitShape(point);
+        const cursor = tool === "hand" || readonlySpaceRef.current ? "grab"
+          : hit?.type === "link" ? "pointer"
+          : hitReadonlyText(hit, point) ? "text" : "default";
+        event.currentTarget.style.setProperty("cursor", cursor, "important");
+        return;
+      }
       const selectedShape = editor.getSelectedShapeIds().length === 1
         ? editor.getShape(editor.getSelectedShapeIds()[0]!) : undefined;
       if ((tool === "select" || tool === "pen") && hitBezierHandle(point, selectedShape, cameraRef.current.zoom)) {
@@ -6088,9 +6239,20 @@ export function NativeWhiteboard({
       return;
     }
     action.points.push(point); draftRef.current = action.points; scheduleDraw();
-  }, [editor, eventPoint, hitArrowAtPoint, hitShape, readOnly, refresh, scheduleDraw, store]);
+  }, [clearReadonlyText, editor, eventPoint, hitArrowAtPoint, hitReadonlyText, hitShape, onReadonlyTextSelectionChange, readOnly, refresh, scheduleDraw, store]);
 
   const pointerUp = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    const textAction = actionRef.current;
+    if (textAction?.kind === "readonly-text") {
+      if (event.pointerId !== textAction.pointerId) return;
+      actionRef.current = undefined;
+      event.currentTarget.style.removeProperty("cursor");
+      if (event.type === "pointercancel" || textAction.range.anchor === textAction.range.focus) {
+        clearReadonlyText();
+        if (event.type !== "pointercancel" && !textAction.moved) selectReadonly([textAction.range.shape.id]);
+      }
+      return;
+    }
     if(event.type==='pointercancel'){readonlyLinkPressRef.current=undefined;if(readOnly){actionRef.current=undefined;marqueeRef.current=undefined;delete event.currentTarget.dataset.panning;event.currentTarget.style.removeProperty('cursor');scheduleDraw();return;}}
     delete event.currentTarget.dataset.panning;
     event.currentTarget.style.removeProperty("cursor");
@@ -6176,8 +6338,9 @@ export function NativeWhiteboard({
       }]);
       editor.select(id);
     }
+    if (action.kind === "create" && (tool === "arrow" || tool === "geo")) editor.completeToolAction();
     draftRef.current = []; scheduleDraw();
-  }, [arrowStyle, color, drawColor, drawSize, editor, eventPoint, geoPaintStyle, scheduleDraw, store,readOnly,selectReadonly]);
+  }, [arrowStyle, clearReadonlyText, color, drawColor, drawSize, editor, eventPoint, geoPaintStyle, scheduleDraw, store,readOnly,selectReadonly]);
 
   const doubleClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const tool = editor.getCurrentTool();
@@ -6964,11 +7127,27 @@ export function NativeWhiteboard({
       })()
     : undefined;
   const connectionPath=connectionCurve?`M ${connectionCurve.start.x} ${connectionCurve.start.y} C ${connectionCurve.control1.x} ${connectionCurve.control1.y}, ${connectionCurve.control2.x} ${connectionCurve.control2.y}, ${connectionCurve.end.x} ${connectionCurve.end.y}`:undefined;
+  const handleReadonlyContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!readOnly || (event.target as Element).closest('[data-whiteboard-control-surface],[data-whiteboard-control-button]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const shape = hitShape(eventPoint(event));
+    const range = readonlyTextRangeRef.current;
+    const keepTextSelection = range && range.anchor !== range.focus && range.shape.id === shape?.id;
+    if (!keepTextSelection) {
+      clearReadonlyText();
+      if (!shape) selectReadonly([]);
+      else if (!editor.getSelectedShapeIds().includes(shape.id)) selectReadonly([shape.id]);
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    onReadonlyContextMenu?.({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+  };
   return (
-    <div ref={rootRef} onPointerDownCapture={event=>{if(readOnly&&(event.target as Element).closest('video,audio')){const shape=hitShape(eventPoint(event));if(shape)selectReadonly([shape.id]);}}} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape?.type==='group-folder'){const group=nativeGroupId(shape);if(group)onReadonlyGroupToggle?.(group,false);}else if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={event=>{if(readOnly){if((event.target as Element).closest('[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;event.preventDefault();event.stopPropagation();const shape=hitShape(eventPoint(event));if(shape&&!editor.getSelectedShapeIds().includes(shape.id))selectReadonly([shape.id]);else if(!shape)selectReadonly([]);const rect=rootRef.current!.getBoundingClientRect();onReadonlyContextMenu?.({x:event.clientX-rect.left,y:event.clientY-rect.top});}}} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
+    <div ref={rootRef} onPointerDownCapture={event=>{if(readOnly&&(event.target as Element).closest('video,audio')){const shape=hitShape(eventPoint(event));if(shape)selectReadonly([shape.id]);}}} onDropCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onPasteCapture={event=>{if(readOnly){event.preventDefault();event.stopPropagation();}}} onDoubleClickCapture={event=>{if(readOnly){if((event.target as Element).closest('video,audio,[data-whiteboard-control-surface],[data-whiteboard-control-button]'))return;const shape=hitShape(eventPoint(event));if(shape?.type==='group-folder'){const group=nativeGroupId(shape);if(group)onReadonlyGroupToggle?.(group,false);}else if(shape&&shape.type!=='link')onReadonlyShapeOpen?.(shape.id);event.preventDefault();event.stopPropagation();}}} onContextMenuCapture={handleReadonlyContextMenu} data-moki-whiteboard-page-id={editor.getCurrentPageId()} data-moki-whiteboard-page-name={pageName(store.snapshot, editor.getCurrentPageId())} className="native-whiteboard relative h-full w-full overflow-hidden bg-[#fafbfe]">
       <canvas
         ref={canvasRef}
-        className="native-whiteboard-canvas block h-full w-full touch-none"
+        tabIndex={readOnly ? -1 : undefined}
+        className={`native-whiteboard-canvas block h-full w-full touch-none${readOnly ? " outline-none" : ""}`}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}

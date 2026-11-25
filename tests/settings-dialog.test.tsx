@@ -10,10 +10,23 @@ import {NativeControlsContext} from '../src/web/native-context.js';
 const APP_VERSION='9.8.7'; // The UI renders the supplied server version, not a hard-coded product version.
 import {APP_DEVELOPER_EMAIL,DEVELOPER_CONTACT_URL,isAllowedExternalUrl} from '../src/shared/app-metadata.js';
 import type {DesktopSettingsState} from '../src/shared/desktop-settings-contract.js';
+import {AUTO_TOOL_SWITCH_KEY} from '../src/vendor/moki/web/lib/whiteboard-tool-preferences.js';
 const initial={path:'C:/MOKI/whiteboard-materials',defaultPath:'C:/MOKI/whiteboard-materials',pendingPath:null,error:null};
-afterEach(()=>{cleanup();delete window.mokiDesktop;vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();localStorage.removeItem(AUTO_TOOL_SWITCH_KEY);delete window.mokiDesktop;vi.unstubAllGlobals();});
 function Demo(){const [tab,setTab]=useState<SettingsTab>('appearance'),[themeMode,setThemeMode]=useState<ThemeMode>('light');return <SettingsDialog version={APP_VERSION} tab={tab} onTab={setTab} close={vi.fn()} themeMode={themeMode} onThemeMode={setThemeMode} mcp={<p>MCP 连接内容</p>}/>;}
 describe('unified settings',()=>{
+ it('remembers automatic tool switching and responds to preference changes from another window',()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({resourceCache:initial}))));
+  const first=render(<Demo/>);fireEvent.click(screen.getByRole('tab',{name:'常规'}));
+  expect(screen.getByRole('switch',{name:'自动切换工具'})).toBeChecked();
+  fireEvent.click(screen.getByRole('switch',{name:'自动切换工具'}));
+  expect(localStorage.getItem(AUTO_TOOL_SWITCH_KEY)).toBe('false');
+  first.unmount();render(<Demo/>);fireEvent.click(screen.getByRole('tab',{name:'常规'}));
+  expect(screen.getByRole('switch',{name:'自动切换工具'})).not.toBeChecked();
+  localStorage.setItem(AUTO_TOOL_SWITCH_KEY,'true');
+  fireEvent(window,new StorageEvent('storage',{key:AUTO_TOOL_SWITCH_KEY,newValue:'true'}));
+  expect(screen.getByRole('switch',{name:'自动切换工具'})).toBeChecked();
+ });
  it('persists the tray preference and reports OS approval instead of pretending startup is active',async()=>{
   let state:DesktopSettingsState={closeToTray:true,trayAvailable:true,trayError:null,openAtLogin:false,startupAvailable:true,startupStatus:'disabled',startupHint:'登录时启动'};
   const set=vi.fn(async(value:{closeToTray?:boolean;openAtLogin?:boolean})=>{state={...state,...value,...(value.openAtLogin?{startupStatus:'requires-approval' as const}:{})};return state;});

@@ -1,5 +1,6 @@
 import {WhiteboardMaterialsPanel,type WhiteboardMaterial} from '../components/whiteboard-materials-panel.js';
 import {rememberedWhiteboardPage} from '../lib/whiteboard-view-memory.js';
+import {useAutoToolSwitch} from '../lib/whiteboard-tool-preferences.js';
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -295,6 +296,8 @@ const WHITEBOARD_SHORTCUTS = [
   { label: "删除选中元素", keys: "Delete / Backspace" },
   { label: "指针 / 抓手", keys: "V / H" },
   { label: "画笔 / 钢笔 / 文字 / 图形", keys: "P / B / T / R" },
+  { label: "橡皮 / 箭头", keys: "E / A" },
+  { label: "思维导图 / 文件 / 网页链接", keys: "M / F / L" },
   { label: "新建便签", keys: "N" },
   { label: "选择图片文件", keys: "I" },
 ] as const;
@@ -1260,6 +1263,15 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
   const [transferring, setTransferring] = useState<"export" | "import">();
   const [activeTool, setActiveTool] =
     useState<CanvasToolId>("select");
+  const [autoSwitchTools] = useAutoToolSwitch();
+  const handleToolChange = useCallback((tool: string) => {
+    setActiveTool(tool as CanvasToolId);
+    if (tool === "select") {
+      setShapeMenuOpen(false);
+      setDrawMenuOpen(false);
+      setArrowMenuOpen(false);
+    }
+  }, []);
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
   const [drawMenuOpen, setDrawMenuOpen] = useState(false);
   const [alignmentToolsOpen, setAlignmentToolsOpen] = useState(false);
@@ -1995,6 +2007,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         [shape] as Parameters<NativeWhiteboardEditor["createShapes"]>[0],
       );
       editor.select?.(id);
+      editor.completeToolAction();
       queuePersist();
     },
     [queuePersist, selectedColor, textStyle],
@@ -2019,8 +2032,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
     editor.select(...mindMap.nodeIds);
     editor.zoomToSelection({ animation: { duration: 220 } });
     editor.select(mindMap.rootId);
-    editor.setCurrentTool("select");
-    setActiveTool("select");
+    editor.completeToolAction();
     setMindMapMenuOpen(false);
     queuePersist();
   }, [queuePersist, selectedColor]);
@@ -2063,6 +2075,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
     setLinkTitle("");
     setLinkMode("link");
     setLinkError("");
+    editor.completeToolAction();
     queuePersist();
   }, [linkMode, linkTitle, linkUrl, queuePersist]);
 
@@ -2133,6 +2146,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
   const insertLibraryItems = useCallback(async (items: ResourceLibraryItem[]) => {
     const editor = editorRef.current;
     if (!editor || items.length === 0) return;
+    const toolIntent = editor.captureToolIntent();
     const metrics = getCanvasInsertMetrics(editor);
     const imageItems = items.filter(isResourceLibraryImage);
     const resourceItems = items.filter((item) => !isResourceLibraryImage(item));
@@ -2169,6 +2183,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         editor.select?.(...ids);
       }
       setCanvasRevision((value) => value + 1);
+      editor.completeToolAction(toolIntent);
       queuePersist();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "资料添加到白板失败");
@@ -2217,6 +2232,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       files: FileList | File[],
       point?: NativeVecLike,
       throwOnError = false,
+      toolIntent?: ReturnType<NativeWhiteboardEditor["captureToolIntent"]>,
     ) => {
       const editor = editorRef.current;
       if (!editor) {
@@ -2244,7 +2260,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
             files: imageFiles,
             point: insertionPoint,
           },
-          { force: true },
+          { force: true, ...(toolIntent ? {toolIntent} : {}) },
         );
         queuePersist();
       } catch (reason) {
@@ -2263,6 +2279,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
   ) => {
     const editor = editorRef.current;
     if (!editor || items.length === 0) return;
+    const toolIntent = editor.captureToolIntent();
     const previewable = items.filter(({ file, isDirectory }) =>
       !isDirectory && isDroppedPreviewableMedia(file),
     );
@@ -2304,6 +2321,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         editor.select?.(...ids);
       }
       setCanvasRevision((value) => value + 1);
+      editor.completeToolAction(toolIntent);
       queuePersist();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "本地文件添加失败");
@@ -2311,6 +2329,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
   }, [queuePersist]);
 
   const insertRemoteImage = useCallback(async (url: string, point?: NativeVecLike) => {
+    const toolIntent = editorRef.current?.captureToolIntent();
     try {
       setError("");
       const cached = await apiFetch("/api/whiteboard/assets/remote", {
@@ -2329,7 +2348,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       })();
       await insertImageFiles([
         new File([blob], sourceName, { type: payload.mimeType || blob.type || "image/png" }),
-      ], point, true);
+      ], point, true, toolIntent);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "网络图片缓存失败");
     }
@@ -2736,6 +2755,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
       }
       const editor = editorRef.current;
       if (!editor) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
       const modifier = event.ctrlKey || event.metaKey;
       if (embedded && (!active || !target || !embeddedRootRef.current?.contains(target))) return;
       if (!embedded && target?.closest('[data-whiteboard-embedded="true"]')) return;
@@ -2808,6 +2828,27 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
         }
       }
       if (!modifier && !event.altKey && !event.repeat) {
+        if (key === "e" || key === "a") {
+          event.preventDefault();
+          setCanvasTool(key === "e" ? "eraser" : "arrow");
+          return;
+        }
+        if (key === "f") {
+          event.preventDefault();
+          setFileInsertMenuOpen(value => !value);
+          return;
+        }
+        if (key === "l") {
+          event.preventDefault();
+          setLinkError("");
+          setLinkDialogOpen(true);
+          return;
+        }
+        if (key === "m") {
+          event.preventDefault();
+          setMindMapMenuOpen(value => !value);
+          return;
+        }
         if (key === "v" || key === "1") {
           event.preventDefault();
           editor.setCurrentTool("select");
@@ -2868,7 +2909,7 @@ export function WhiteboardPage({ embedded = false, active = true, boardTitle, in
     window.addEventListener("keydown", handleKeyDown, true);
     return () =>
       window.removeEventListener("keydown", handleKeyDown, true);
-  }, [active, embedded, alignSelectedShapes, insertScaledShape, persist, queuePersist, selectedGeo]);
+  }, [active, embedded, alignSelectedShapes, insertScaledShape, persist, queuePersist, selectedGeo, setCanvasTool]);
 
   async function loadVersion(version: number) {
     setError("");
@@ -3087,6 +3128,8 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 store={store}
                 viewStateKey={location.pathname}
                 onMount={handleMount}
+                autoSwitchTools={autoSwitchTools}
+                onToolChange={handleToolChange}
                 onImageFiles={insertImageFiles}
                 onLocalFiles={insertDroppedLocalItems}
                 onImageUrl={insertRemoteImage}
@@ -3130,7 +3173,10 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
               {linkDialogOpen && (
                 <div className="absolute inset-0 z-[70] grid place-items-center bg-[#171b2a]/25 p-6 backdrop-blur-[2px]">
                   <form
+                    role="dialog"
+                    aria-modal="true"
                     aria-label="插入白板链接"
+                    onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setLinkDialogOpen(false); setLinkError(''); } }}
                     className="w-full max-w-md rounded-3xl border border-white bg-white p-5 shadow-[0_24px_70px_rgba(30,34,54,.24)]"
                     onSubmit={(event) => {
                       event.preventDefault();
@@ -3341,7 +3387,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="选择"
-                  title="选择"
+                  title="选择（V / 1）" data-tool-hint="选择（V / 1）"
                   aria-pressed={activeTool === "select"}
                   onClick={() => setCanvasTool("select")}
                   className={toolButtonClass("select")}
@@ -3351,7 +3397,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="拖动画布"
-                  title="拖动画布"
+                  title="拖动画布（H / 2）" data-tool-hint="拖动画布（H / 2）"
                   aria-pressed={activeTool === "hand"}
                   onClick={() => setCanvasTool("hand")}
                   className={toolButtonClass("hand")}
@@ -3361,7 +3407,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="橡皮"
-                  title="橡皮"
+                  title="橡皮（E）" data-tool-hint="橡皮（E）"
                   aria-pressed={activeTool === "eraser"}
                   onClick={() => setCanvasTool("eraser")}
                   className={toolButtonClass("eraser")}
@@ -3372,7 +3418,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="箭头"
-                    title="箭头与连线"
+                    title="箭头与连线（A）" data-tool-hint="箭头与连线（A）"
                     aria-pressed={activeTool === "arrow"}
                     aria-expanded={arrowMenuOpen}
                     onClick={() => {
@@ -3422,7 +3468,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="钢笔"
-                    title="钢笔：点击添加锚点，拖拽调整曲线；双击或 Enter 完成，点击起点闭合"
+                    title="钢笔（B）：点击添加锚点，拖拽调整曲线；双击或 Enter 完成" data-tool-hint="钢笔（B）：点击添加锚点，拖拽调整曲线；双击或 Enter 完成"
                     aria-pressed={activeTool === "pen"}
                     aria-expanded={activeTool === "pen" && drawMenuOpen}
                     onClick={() => {
@@ -3437,7 +3483,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="画笔"
-                    title="自由绘制"
+                    title="自由绘制（P / 3）" data-tool-hint="自由绘制（P / 3）"
                     aria-pressed={activeTool === "draw"}
                     aria-expanded={drawMenuOpen}
                     onClick={() => {
@@ -3517,7 +3563,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="文字"
-                    title="点击画布输入文字"
+                    title="文字（T / 4）：点击画布输入" data-tool-hint="文字（T / 4）：点击画布输入"
                     aria-pressed={activeTool === "text"}
                     onClick={() => setCanvasTool("text")}
                     className={toolButtonClass("text")}
@@ -3528,7 +3574,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="便签"
-                  title="添加便签"
+                  title="添加便签（N）" data-tool-hint="添加便签（N）"
                   onClick={() => insertScaledShape("note")}
                   className={actionButtonClass}
                 >
@@ -3538,11 +3584,9 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="插入思维导图"
-                    title="选择思维导图模板"
+                    title="思维导图（M）：选择模板" data-tool-hint="思维导图（M）：选择模板"
                     aria-expanded={mindMapMenuOpen}
                     onClick={() => {
-                      editorRef.current?.setCurrentTool("select");
-                      setActiveTool("select");
                       setShapeMenuOpen(false);
                       setArrowMenuOpen(false);
                                         setMindMapMenuOpen((value) => !value);
@@ -3595,7 +3639,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="形状"
-                    title="形状"
+                    title="形状（R / 5）" data-tool-hint="形状（R / 5）"
                     aria-pressed={activeTool === "geo"}
                     aria-expanded={shapeMenuOpen}
                     onClick={() => {
@@ -3647,7 +3691,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="图片或 GIF"
-                  title="插入图片或 GIF（I），也可 Ctrl/⌘+V 粘贴"
+                  title="图片、GIF 或视频（I）；粘贴 Ctrl / ⌘ + V" data-tool-hint="图片、GIF 或视频（I）；粘贴 Ctrl / ⌘ + V"
                   onClick={() => imageInputRef.current?.click()}
                   className={actionButtonClass}
                 >
@@ -3657,7 +3701,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                   <button
                     type="button"
                     aria-label="添加文件"
-                    title="添加本地文件或文件夹"
+                    title="添加本地文件或文件夹（F）" data-tool-hint="添加本地文件或文件夹（F）"
                     aria-expanded={fileInsertMenuOpen}
                     onClick={() => setFileInsertMenuOpen((value) => !value)}
                     className={actionButtonClass}
@@ -3674,7 +3718,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="链接"
-                  title="插入网页链接"
+                  title="插入网页链接（L）" data-tool-hint="插入网页链接（L）"
                   onClick={() => {
                     setLinkDialogOpen(true);
                     setLinkError("");
@@ -3688,7 +3732,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="对齐工具"
-                  title={alignmentToolsOpen ? "收起对齐工具" : "展开对齐工具"}
+                  title={alignmentToolsOpen ? "收起对齐工具" : "展开对齐工具"} data-tool-hint="对齐工具（Ctrl / ⌘ + 方向键）"
                   aria-expanded={alignmentToolsOpen}
                   onClick={() => setAlignmentToolsOpen(value => !value)}
                   className={`${actionButtonClass} ${alignmentToolsOpen ? "bg-[#ebeafd] text-[#625bc5]" : ""}`}
@@ -3699,7 +3743,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="左对齐"
-                  title="左对齐"
+                  title="左对齐（Ctrl / ⌘ + ←）" data-tool-hint="左对齐（Ctrl / ⌘ + ←）"
                   onClick={() => alignSelectedShapes("left")}
                   className={actionButtonClass}
                 >
@@ -3708,7 +3752,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="水平居中"
-                  title="水平居中"
+                  title="水平居中" data-tool-hint="水平居中"
                   onClick={() => alignSelectedShapes("center-x")}
                   className={actionButtonClass}
                 >
@@ -3717,7 +3761,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="右对齐"
-                  title="右对齐"
+                  title="右对齐（Ctrl / ⌘ + →）" data-tool-hint="右对齐（Ctrl / ⌘ + →）"
                   onClick={() => alignSelectedShapes("right")}
                   className={actionButtonClass}
                 >
@@ -3726,7 +3770,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="顶部对齐"
-                  title="顶部对齐"
+                  title="顶部对齐（Ctrl / ⌘ + ↑）" data-tool-hint="顶部对齐（Ctrl / ⌘ + ↑）"
                   onClick={() => alignSelectedShapes("top")}
                   className={actionButtonClass}
                 >
@@ -3735,7 +3779,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="垂直居中"
-                  title="垂直居中"
+                  title="垂直居中" data-tool-hint="垂直居中"
                   onClick={() => alignSelectedShapes("center-y")}
                   className={actionButtonClass}
                 >
@@ -3744,7 +3788,7 @@ html[data-color-scheme="dark"] .whiteboard-canvas[data-tool-cursor="true"] .nati
                 <button
                   type="button"
                   aria-label="底部对齐"
-                  title="底部对齐"
+                  title="底部对齐（Ctrl / ⌘ + ↓）" data-tool-hint="底部对齐（Ctrl / ⌘ + ↓）"
                   onClick={() => alignSelectedShapes("bottom")}
                   className={actionButtonClass}
                 >

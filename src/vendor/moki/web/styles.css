@@ -1085,7 +1085,7 @@ body {
 
 button {
   cursor: pointer;
-  min-height: 40px;
+  min-height: var(--moki-button-min-height, 40px);
 }
 
 button.dashboard-calendar-signal-button {
@@ -2314,4 +2314,38 @@ html[data-color-scheme="dark"] #root :is(.native-whiteboard-canvas, img, video, 
 
 html[data-color-scheme="dark"] #root :is(.shell-main-scroll, .changes-scroll, [class*="overflow-y-auto"]) {
   scrollbar-color: #515970 transparent;
+}
+
+/* Tool hints sit above the toolbar and do not intercept canvas gestures. */
+[data-whiteboard-toolbox] button[data-tool-hint] { position: relative; }
+[data-whiteboard-toolbox] button[data-tool-hint]::after {
+  content: attr(data-tool-hint);
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translate(-50%, 3px);
+  width: max-content;
+  max-width: min(280px, 80vw);
+  padding: 7px 10px;
+  border: 1px solid #42485f;
+  border-radius: 9px;
+  background: #242838;
+  color: #f4f3ff;
+  font: 500 12px/1.5 system-ui, sans-serif;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 4px 14px #0002;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .12s, transform .12s;
+}
+[data-whiteboard-toolbox] button[data-tool-hint]:is(:hover, :focus-visible)::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+@media (hover: none) {
+  [data-whiteboard-toolbox] button[data-tool-hint]:hover:not(:focus-visible)::after { visibility: hidden; }
 }

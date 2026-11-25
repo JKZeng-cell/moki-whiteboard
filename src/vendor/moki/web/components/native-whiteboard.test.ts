@@ -180,6 +180,70 @@ describe('read-only shared whiteboard controls',()=>{
  });
 });
 
+describe("automatic tool switching", () => {
+  it.each([true, false])("switches pasted images to selection only when enabled (%s)", async (enabled) => {
+    mockCanvas();
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({width: 320, height: 180, close: vi.fn()}));
+    class LoadedImage {
+      complete = true; naturalWidth = 320; naturalHeight = 180;
+      onload?: () => void;
+      set src(_value: string) {queueMicrotask(() => this.onload?.());}
+    }
+    vi.stubGlobal("Image", LoadedImage);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: true, json: async () => ({src: "/api/whiteboard/assets/paste", mimeType: "image/png", fileSize: 5})}));
+    const store = new NativeWhiteboardStore();
+    let editor!: NativeWhiteboardEditor;
+    const changed = vi.fn();
+    render(createElement(NativeWhiteboard, {store, autoSwitchTools: enabled, onToolChange: changed,
+      onMount: value => {editor = value;}, onImageFiles: files => editor.putExternalContent({files})}));
+    act(() => {editor.setCurrentTool("draw");});
+    const file = new File(["image"], "pasted.png", {type: "image/png"});
+    fireEvent.paste(window, {clipboardData: {types: ["image/png"], getData: () => "", files: [file], items: []}});
+    await waitFor(() => expect(editor.getSelectedShapeIds()).toHaveLength(1));
+    expect(editor.getShape(editor.getSelectedShapeIds()[0]!)?.type).toBe("image");
+    expect(editor.getCurrentTool()).toBe(enabled ? "select" : "draw");
+    expect(changed).toHaveBeenLastCalledWith(enabled ? "select" : "draw");
+  });
+
+  it.each(["tool", "page", "setting"])("preserves a newer %s intent while an upload completes", async (change) => {
+    const editor = new NativeWhiteboardEditor(new NativeWhiteboardStore());
+    editor.setAutoToolSwitch(true);
+    editor.setCurrentTool("draw");
+    const sourcePage = editor.getCurrentPageId();
+    let finish!: (value: unknown) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(resolve => {finish = resolve;})));
+    const uploading = editor.putExternalContent({files: [new File(["video"], "pending.mp4", {type: "video/mp4"})]});
+    await waitFor(() => expect(finish).toBeDefined());
+    if (change === "tool") editor.setCurrentTool("hand");
+    if (change === "page") editor.createPage();
+    if (change === "setting") {editor.setAutoToolSwitch(false);editor.setAutoToolSwitch(true);}
+    finish({ok: true, json: async () => ({src: "/api/whiteboard/assets/pending", mimeType: "video/mp4", fileSize: 5})});
+    await uploading;
+    expect(editor.getCurrentTool()).toBe(change === "tool" ? "hand" : "draw");
+    const inserted = Object.values(editor.store.snapshot.document.store).find(record => record.typeName === "shape");
+    expect(inserted?.parentId).toBe(sourcePage);
+  });
+
+  it("switches after completing a shape but keeps consecutive freehand strokes active", () => {
+    mockCanvas();
+    let editor!: NativeWhiteboardEditor;
+    const view = render(createElement(NativeWhiteboard, {store: new NativeWhiteboardStore(), autoSwitchTools: true, onMount: value => {editor = value;}}));
+    const canvas = view.container.querySelector("canvas")!;
+    const drag = () => {
+      for (const [type, x, y] of [["pointerdown", 100, 100], ["pointermove", 300, 240], ["pointerup", 300, 240]] as const) {
+        const event = new MouseEvent(type, {bubbles: true, clientX: x, clientY: y, button: 0});
+        Object.defineProperty(event, "pointerId", {value: 11});fireEvent(canvas, event);
+      }
+    };
+    act(() => {editor.setCurrentTool("geo");});drag();
+    expect(editor.getCurrentTool()).toBe("select");
+    expect(editor.getSelectedShapeIds()).toHaveLength(1);
+    act(() => {editor.setCurrentTool("draw");});drag();drag();
+    expect(editor.getCurrentTool()).toBe("draw");
+    expect([...editor.getCurrentPageShapeIds()]).toHaveLength(3);
+  });
+});
+
 describe("newly inserted video dragging", () => {
   async function setup() {
     mockCanvas();
